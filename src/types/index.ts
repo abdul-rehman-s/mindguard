@@ -50,10 +50,13 @@ export interface CreateReflectionInput {
 export interface DashboardStats {
   todayFocusMinutes: number;
   weeklyFocusMinutes: number;
+  totalFocusMinutes: number;
   currentStreak: number;
   focusScore: number;
   totalSessions: number;
   todaySessions: number;
+  avgSessionMinutes: number;
+  bestDay: { day: string; minutes: number; sessions: number } | null;
 }
 
 export interface WeeklyData {

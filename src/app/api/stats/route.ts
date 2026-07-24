@@ -72,7 +72,11 @@ export async function GET() {
       checkDate = subDays(checkDate, 1);
     }
 
-    // totalMinutes removed — unused in response; streak logic above is correct
+    // Calculate total all-time minutes for streak scoring context
+    const totalMinutes = Math.round(
+      allSessions.reduce((acc, s) => acc + s.duration, 0) / 60
+    );
+
 
     const focusScore =
       weeklyMinutes > 0
@@ -101,10 +105,13 @@ export async function GET() {
     return NextResponse.json({
       todayFocusMinutes: todayMinutes,
       weeklyFocusMinutes: weeklyMinutes,
+      totalFocusMinutes: totalMinutes,
       currentStreak: streak,
       focusScore,
       totalSessions: allSessions.length,
       todaySessions: todaySessions.length,
+      avgSessionMinutes: allSessions.length > 0 ? Math.round(totalMinutes / allSessions.length) : 0,
+      bestDay: weekDays.reduce((best, d) => d.minutes > best.minutes ? d : best, weekDays[0]),
       weeklyData: weekDays,
       recentSessions,
       activeMission,
