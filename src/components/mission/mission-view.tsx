@@ -9,12 +9,13 @@ import {
   Pencil,
   Check,
   Trash2,
-  X,
   Loader2,
   AlertCircle,
   Clock,
   Timer,
   ChevronDown,
+  Flame,
+  Sparkles,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -52,12 +53,12 @@ import type { Mission, MissionPriority, MissionWithSessions } from '@/types';
 
 const container = {
   hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.06 } },
+  visible: { opacity: 1, transition: { staggerChildren: 0.07 } },
 };
 
 const item = {
-  hidden: { opacity: 0, y: 12 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.4 } },
+  hidden: { opacity: 0, y: 14 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.25, 0.1, 0.25, 1] } },
 };
 
 const priorityConfig: Record<MissionPriority, { label: string; class: string }> = {
@@ -103,7 +104,7 @@ function MissionForm({ initialData, onSubmit, onCancel, loading, submitLabel }: 
           placeholder="What's your one mission?"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          className="border-zinc-800 bg-zinc-800/50 text-zinc-200 placeholder:text-zinc-600 focus-visible:border-emerald-500/50 focus-visible:ring-emerald-500/20"
+          className="border-white/[0.06] bg-white/[0.03] text-zinc-200 placeholder:text-zinc-600 focus-visible:border-emerald-500/40 focus-visible:ring-emerald-500/20"
           autoFocus
           required
         />
@@ -117,16 +118,16 @@ function MissionForm({ initialData, onSubmit, onCancel, loading, submitLabel }: 
           placeholder="Add details about this mission..."
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          className="border-zinc-800 bg-zinc-800/50 text-zinc-200 placeholder:text-zinc-600 focus-visible:border-emerald-500/50 focus-visible:ring-emerald-500/20 min-h-[80px]"
+          className="border-white/[0.06] bg-white/[0.03] text-zinc-200 placeholder:text-zinc-600 focus-visible:border-emerald-500/40 focus-visible:ring-emerald-500/20 min-h-[80px] resize-none"
         />
       </div>
       <div>
         <Label className="mb-1.5 text-xs font-medium text-zinc-400">Priority</Label>
         <Select value={priority} onValueChange={(v) => setPriority(v as MissionPriority)}>
-          <SelectTrigger className="border-zinc-800 bg-zinc-800/50 text-zinc-200">
+          <SelectTrigger className="border-white/[0.06] bg-white/[0.03] text-zinc-200">
             <SelectValue />
           </SelectTrigger>
-          <SelectContent className="border-zinc-800 bg-zinc-900">
+          <SelectContent className="border-white/[0.06] bg-zinc-900">
             <SelectItem value="low">Low</SelectItem>
             <SelectItem value="medium">Medium</SelectItem>
             <SelectItem value="high">High</SelectItem>
@@ -186,6 +187,8 @@ export function MissionView() {
   }, [fetchMissions]);
 
   const hasActiveMission = missions.some((m) => m.status === 'active');
+  const completedCount = missions.filter((m) => m.status === 'completed').length;
+  const totalFocusSeconds = missions.reduce((a, m) => a + m.focusSessions.reduce((s, fs) => s + fs.duration, 0), 0);
 
   const handleCreate = async (data: { title: string; description?: string; priority: MissionPriority }) => {
     setFormLoading(true);
@@ -203,7 +206,7 @@ export function MissionView() {
       toast.success('Mission created', { description: data.title });
       fetchMissions();
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : 'Failed to create mission');
+      toast.error(err instanceof Error ? err.message : 'Failed to create mission');
     } finally {
       setFormLoading(false);
     }
@@ -237,7 +240,7 @@ export function MissionView() {
         body: JSON.stringify({ status: 'completed' }),
       });
       if (!res.ok) throw new Error('Failed');
-      toast.success('Mission completed! 🎉');
+      toast.success('Mission completed!', { description: 'Great work staying focused.' });
       fetchMissions();
     } catch {
       toast.error('Failed to complete mission');
@@ -259,7 +262,7 @@ export function MissionView() {
   if (loading) {
     return (
       <div className="flex h-64 items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-zinc-500" />
+        <Loader2 className="h-5 w-5 animate-spin text-zinc-600" />
       </div>
     );
   }
@@ -267,7 +270,7 @@ export function MissionView() {
   if (error) {
     return (
       <div className="flex h-64 flex-col items-center justify-center gap-3">
-        <AlertCircle className="h-8 w-8 text-red-400" />
+        <AlertCircle className="h-8 w-8 text-red-400/60" />
         <p className="text-sm text-zinc-400">{error}</p>
         <Button variant="ghost" size="sm" onClick={fetchMissions}>Try again</Button>
       </div>
@@ -275,11 +278,61 @@ export function MissionView() {
   }
 
   return (
-    <motion.div variants={container} initial="hidden" animate="visible">
+    <motion.div variants={container} initial="hidden" animate="visible" className="app-grid-bg min-h-full -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+      {/* Header */}
+      <motion.div variants={item} className="mb-10 pt-2">
+        <h2 className="text-[1.65rem] font-semibold tracking-[-0.02em] text-zinc-100">Missions</h2>
+        <p className="mt-1.5 text-sm text-zinc-500">One active mission at a time. Stay focused on what matters.</p>
+      </motion.div>
+
+      {/* Quick Stats Row */}
+      <motion.div variants={item} className="mb-8 grid grid-cols-3 gap-3">
+        <Card className="card-glow border-white/[0.06] bg-white/[0.02]">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2.5">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/[0.08]">
+                <Target className="h-4 w-4 text-emerald-400/80" />
+              </div>
+              <div>
+                <p className="text-[10px] font-medium uppercase tracking-wider text-zinc-600">Total</p>
+                <p className="text-lg font-semibold tabular-nums text-zinc-50">{missions.length}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="card-glow border-white/[0.06] bg-white/[0.02]">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2.5">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/[0.08]">
+                <Check className="h-4 w-4 text-emerald-400/80" />
+              </div>
+              <div>
+                <p className="text-[10px] font-medium uppercase tracking-wider text-zinc-600">Completed</p>
+                <p className="text-lg font-semibold tabular-nums text-zinc-50">{completedCount}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="card-glow border-white/[0.06] bg-white/[0.02]">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2.5">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/[0.08]">
+                <Clock className="h-4 w-4 text-emerald-400/80" />
+              </div>
+              <div>
+                <p className="text-[10px] font-medium uppercase tracking-wider text-zinc-600">Focus Time</p>
+                <p className="text-lg font-semibold tabular-nums text-zinc-50">{formatDuration(totalFocusSeconds)}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* Create Button + Warning */}
       <motion.div variants={item} className="mb-6 flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-semibold text-zinc-100">Missions</h2>
-          <p className="text-sm text-zinc-500">One active mission at a time. Stay focused.</p>
+        <div className="flex items-center gap-2">
+          <Flame className="h-3.5 w-3.5 text-zinc-500" />
+          <h3 className="text-xs font-medium uppercase tracking-wider text-zinc-500">All Missions</h3>
         </div>
         <Button
           onClick={() => setShowForm(true)}
@@ -293,20 +346,24 @@ export function MissionView() {
       </motion.div>
 
       {hasActiveMission && !showForm && !editingMission && (
-        <motion.div variants={item} className="mb-4 rounded-lg border border-amber-500/20 bg-amber-500/5 px-4 py-2.5">
-          <p className="text-xs text-amber-400">
+        <motion.div variants={item} className="mb-5 rounded-xl border border-amber-500/15 bg-amber-500/[0.04] px-4 py-3">
+          <p className="text-xs text-amber-400/80">
+            <Sparkles className="mr-1.5 inline-block h-3 w-3" />
             Complete or archive your active mission before creating a new one.
           </p>
         </motion.div>
       )}
 
+      {/* Mission List */}
       <motion.div variants={item} className="flex flex-col gap-3">
         {missions.length === 0 && !showForm ? (
-          <Card className="border-zinc-800/50 bg-zinc-900/30">
-            <CardContent className="flex flex-col items-center justify-center p-12">
-              <Target className="mb-3 h-10 w-10 text-zinc-700" />
-              <h3 className="mb-1 text-sm font-medium text-zinc-400">No missions yet</h3>
-              <p className="mb-4 text-xs text-zinc-500">Create your first mission to get started.</p>
+          <Card className="border-dashed border-white/[0.06] bg-white/[0.01]">
+            <CardContent className="flex flex-col items-center justify-center py-16">
+              <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-white/[0.03]">
+                <Target className="h-7 w-7 text-zinc-700" />
+              </div>
+              <p className="mb-1 text-sm font-medium text-zinc-400">No missions yet</p>
+              <p className="mb-5 text-xs text-zinc-600">Create your first mission to start tracking focus.</p>
               <Button
                 onClick={() => setShowForm(true)}
                 className="bg-emerald-500 text-white hover:bg-emerald-600"
@@ -327,25 +384,26 @@ export function MissionView() {
               return (
                 <motion.div
                   key={mission.id}
-                  initial={{ opacity: 0, y: 8 }}
+                  initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, x: -20 }}
                   transition={{ duration: 0.3 }}
                 >
                   <Card className={cn(
-                    'border-zinc-800/50 bg-zinc-900/30 transition-colors hover:bg-zinc-900/50',
-                    mission.status === 'active' && 'border-emerald-500/20'
+                    'card-glow border-white/[0.06] bg-white/[0.02] transition-colors',
+                    mission.status === 'active' && 'border-emerald-500/15'
                   )}>
-                    <CardContent className="p-4">
-                      <div className="flex items-start gap-3">
+                    <CardContent className="p-5">
+                      <div className="flex items-start gap-3.5">
                         <div
                           className={cn(
-                            'mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg',
-                            mission.status === 'active' ? 'bg-emerald-500/10' : 'bg-zinc-800/50'
+                            'mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg',
+                            mission.status === 'active' ? 'bg-emerald-500/10' :
+                            mission.status === 'completed' ? 'bg-emerald-500/[0.06]' : 'bg-white/[0.03]'
                           )}
                         >
                           {mission.status === 'completed' ? (
-                            <Check className="h-4 w-4 text-emerald-400" />
+                            <Check className="h-4 w-4 text-emerald-400/70" />
                           ) : (
                             <Target className={cn(
                               'h-4 w-4',
@@ -357,7 +415,7 @@ export function MissionView() {
                           <div className="flex flex-wrap items-center gap-2">
                             <h4 className={cn(
                               'text-sm font-medium',
-                              mission.status === 'completed' ? 'text-zinc-400 line-through' : 'text-zinc-100'
+                              mission.status === 'completed' ? 'text-zinc-500 line-through' : 'text-zinc-100'
                             )}>
                               {mission.title}
                             </h4>
@@ -372,28 +430,58 @@ export function MissionView() {
                                 Active
                               </Badge>
                             )}
+                            {mission.status === 'completed' && mission.completedAt && (
+                              <span className="text-[10px] text-zinc-600">
+                                {new Date(mission.completedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                              </span>
+                            )}
                           </div>
                           {mission.description && (
-                            <p className="mt-1 text-xs text-zinc-500 line-clamp-2">
+                            <p className="mt-1.5 text-xs leading-relaxed text-zinc-500 line-clamp-2">
                               {mission.description}
                             </p>
                           )}
                           <button
-                            className="mt-2 flex items-center gap-1 text-xs text-zinc-500 hover:text-zinc-400"
+                            className="mt-2.5 flex items-center gap-1.5 text-xs text-zinc-600 hover:text-zinc-400 transition-colors"
                             onClick={() => setExpandedId(isExpanded ? null : mission.id)}
                           >
                             <Clock className="h-3 w-3" />
-                            {mission.focusSessions.length} sessions · {formatDuration(totalFocus)}
+                            {mission.focusSessions.length} session{mission.focusSessions.length !== 1 ? 's' : ''} · {formatDuration(totalFocus)}
                             <ChevronDown className={cn('h-3 w-3 transition-transform', isExpanded && 'rotate-180')} />
                           </button>
+
+                          {/* Expanded Sessions */}
+                          <AnimatePresence>
+                            {isExpanded && mission.focusSessions.length > 0 && (
+                              <motion.div
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: 'auto' }}
+                                exit={{ opacity: 0, height: 0 }}
+                                className="mt-3 overflow-hidden"
+                              >
+                                <div className="rounded-lg border border-white/[0.04] bg-white/[0.01] divide-y divide-white/[0.04]">
+                                  {mission.focusSessions.map((session) => (
+                                    <div key={session.id} className="flex items-center justify-between px-3 py-2.5">
+                                      <span className="text-[11px] text-zinc-500">
+                                        {new Date(session.startedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                      </span>
+                                      <span className="text-[11px] font-medium tabular-nums text-zinc-400">
+                                        {formatDuration(session.duration)}
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
                         </div>
-                        <div className="flex shrink-0 items-center gap-1">
+                        <div className="flex shrink-0 items-center gap-0.5">
                           {mission.status === 'active' && (
                             <>
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-7 w-7 text-zinc-500 hover:text-emerald-400"
+                                className="h-8 w-8 text-zinc-600 hover:text-emerald-400 hover:bg-emerald-500/[0.06]"
                                 onClick={() => setView('timer')}
                                 title="Start focus session"
                               >
@@ -402,7 +490,7 @@ export function MissionView() {
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-7 w-7 text-zinc-500 hover:text-emerald-400"
+                                className="h-8 w-8 text-zinc-600 hover:text-emerald-400 hover:bg-emerald-500/[0.06]"
                                 onClick={() => handleComplete(mission.id)}
                                 title="Complete mission"
                               >
@@ -413,7 +501,7 @@ export function MissionView() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-7 w-7 text-zinc-500 hover:text-zinc-300"
+                            className="h-8 w-8 text-zinc-600 hover:text-zinc-300 hover:bg-white/[0.04]"
                             onClick={() => setEditingMission(mission)}
                           >
                             <Pencil className="h-3.5 w-3.5" />
@@ -421,7 +509,7 @@ export function MissionView() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-7 w-7 text-zinc-500 hover:text-red-400"
+                            className="h-8 w-8 text-zinc-600 hover:text-red-400 hover:bg-red-500/[0.06]"
                             onClick={() => setDeletingId(mission.id)}
                           >
                             <Trash2 className="h-3.5 w-3.5" />
@@ -439,7 +527,7 @@ export function MissionView() {
 
       {/* Create Form Dialog */}
       <Dialog open={showForm} onOpenChange={setShowForm}>
-        <DialogContent className="border-zinc-800 bg-zinc-900 sm:max-w-md">
+        <DialogContent className="border-white/[0.06] bg-zinc-900 sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="text-zinc-100">Create Mission</DialogTitle>
             <DialogDescription className="text-zinc-500">
@@ -456,7 +544,7 @@ export function MissionView() {
 
       {/* Edit Form Dialog */}
       <Dialog open={!!editingMission} onOpenChange={() => setEditingMission(null)}>
-        <DialogContent className="border-zinc-800 bg-zinc-900 sm:max-w-md">
+        <DialogContent className="border-white/[0.06] bg-zinc-900 sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="text-zinc-100">Edit Mission</DialogTitle>
             <DialogDescription className="text-zinc-500">
@@ -481,7 +569,7 @@ export function MissionView() {
 
       {/* Delete Confirmation */}
       <AlertDialog open={!!deletingId} onOpenChange={() => setDeletingId(null)}>
-        <AlertDialogContent className="border-zinc-800 bg-zinc-900">
+        <AlertDialogContent className="border-white/[0.06] bg-zinc-900">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-zinc-100">Delete mission?</AlertDialogTitle>
             <AlertDialogDescription className="text-zinc-400">
@@ -489,7 +577,7 @@ export function MissionView() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="border-zinc-700 text-zinc-300 hover:bg-zinc-800">
+            <AlertDialogCancel className="border-white/[0.08] text-zinc-300 hover:bg-white/[0.04]">
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction

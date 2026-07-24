@@ -14,6 +14,7 @@ export type AppView =
   | "mission"
   | "timer"
   | "reflection"
+  | "sessions"
   | "stats"
   | "settings";
 

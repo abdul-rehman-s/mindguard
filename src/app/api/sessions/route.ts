@@ -13,19 +13,34 @@ async function getUserId(): Promise<string | NextResponse> {
   return user.id as string;
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const userId = await getUserId();
   if (userId instanceof NextResponse) return userId;
 
   try {
-    const sessions = await db.focusSession.findMany({
-      where: { userId },
-      include: { mission: { select: { id: true, title: true } } },
-      orderBy: { startedAt: "desc" },
-      take: 50,
-    });
+    const { searchParams } = new URL(request.url);
+    const page = Math.max(parseInt(searchParams.get("page") || "1", 10), 1);
+    const limit = Math.min(Math.max(parseInt(searchParams.get("limit") || "20", 10), 1), 100);
+    const missionId = searchParams.get("missionId") || undefined;
 
-    return NextResponse.json(sessions);
+    const where = { userId, ...(missionId ? { missionId } : {}) };
+
+    const [sessions, total] = await Promise.all([
+      db.focusSession.findMany({
+        where,
+        include: {
+          mission: { select: { id: true, title: true, priority: true } },
+        },
+        orderBy: { startedAt: "desc" },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      db.focusSession.count({ where }),
+    ]);
+
+    const totalPages = Math.ceil(total / limit);
+
+    return NextResponse.json({ sessions, total, page, limit, totalPages });
   } catch {
     return NextResponse.json(
       { error: "Failed to fetch sessions" },

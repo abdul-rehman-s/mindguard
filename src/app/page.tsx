@@ -10,6 +10,7 @@ import { DashboardView } from '@/components/dashboard/dashboard-view';
 import { MissionView } from '@/components/mission/mission-view';
 import { TimerView } from '@/components/timer/timer-view';
 import { ReflectionView } from '@/components/reflection/reflection-view';
+import { SessionHistoryView } from '@/components/sessions/session-history-view';
 import { StatsView } from '@/components/stats/stats-view';
 import { SettingsView } from '@/components/settings/settings-view';
 import { Loader2 } from 'lucide-react';
@@ -71,6 +72,7 @@ export default function HomePage() {
           {currentView === 'mission' && <MissionView />}
           {currentView === 'timer' && <TimerView />}
           {currentView === 'reflection' && <ReflectionView />}
+          {currentView === 'sessions' && <SessionHistoryView />}
           {currentView === 'stats' && <StatsView />}
           {currentView === 'settings' && <SettingsView />}
         </motion.div>

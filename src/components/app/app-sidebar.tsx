@@ -10,6 +10,7 @@ import {
   Settings,
   Shield,
   X,
+  Clock,
 } from 'lucide-react';
 import { useAppStore } from '@/stores/app-store';
 import { useSession, signOut } from 'next-auth/react';
@@ -24,6 +25,7 @@ const navItems: { view: AppView; icon: typeof LayoutDashboard; label: string; sh
   { view: 'mission', icon: Target, label: 'Mission', shortcut: 'M' },
   { view: 'timer', icon: Timer, label: 'Focus Timer', shortcut: 'T' },
   { view: 'reflection', icon: BookOpen, label: 'Reflection', shortcut: 'R' },
+  { view: 'sessions', icon: Clock, label: 'Sessions', shortcut: 'H' },
   { view: 'stats', icon: BarChart3, label: 'Statistics', shortcut: 'S' },
   { view: 'settings', icon: Settings, label: 'Settings', shortcut: ',' },
 ];

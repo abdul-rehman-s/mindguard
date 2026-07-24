@@ -72,13 +72,7 @@ export async function GET() {
       checkDate = subDays(checkDate, 1);
     }
 
-    const totalMinutes = allSessions.reduce(
-      (acc, s) => {
-        const dur = s.startedAt ? 0 : 0;
-        return acc + dur;
-      },
-      0
-    );
+    // totalMinutes removed — unused in response; streak logic above is correct
 
     const focusScore =
       weeklyMinutes > 0
