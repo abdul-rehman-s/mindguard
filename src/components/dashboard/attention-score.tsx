@@ -1,6 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import { cn } from '@/lib/utils';
 import { useAppStore } from '@/stores/app-store';
 
 export function AttentionScore() {
@@ -67,7 +68,7 @@ export function AttentionScore() {
               </div>
               <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/[0.04]">
                 <motion.div
-                  className={cn('h-full rounded-full', b.color, 'opacity-60')}
+                  className={cn('h-full rounded-full opacity-60', b.color)}
                   initial={{ width: 0 }}
                   animate={{ width: `${b.value}%` }}
                   transition={{ duration: 1, delay: 0.3 + i * 0.15, ease: [0.25, 0.1, 0.25, 1] }}

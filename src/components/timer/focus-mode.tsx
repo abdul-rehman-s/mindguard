@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
-import { Pause, Square, Volume2, VolumeX } from 'lucide-react';
+import { Pause, Play, Square, Volume2, VolumeX, CloudRain, TreePine, Coffee, Waves, Sailboat } from 'lucide-react';
 import { useAppStore } from '@/stores/app-store';
 import { cn } from '@/lib/utils';
 import { CelebrationScreen } from './celebration-screen';
@@ -16,8 +16,6 @@ const AMBIENT_SOUNDS = [
   { id: 'brown', label: 'Brown Noise', icon: Waves },
   { id: 'ocean', label: 'Ocean', icon: Sailboat },
 ] as const;
-
-import { CloudRain, TreePine, Coffee, Waves, Sailboat } from 'lucide-react';
 
 const particles = Array.from({ length: 40 }, (_, i) => ({
   id: i,
@@ -44,7 +42,7 @@ interface FocusModeProps {
 }
 
 export function FocusMode({ duration: initialDuration, missionTitle, onExit }: FocusModeProps) {
-  const { setFocusMode, setLastSessionResult, setActiveMission } = useAppStore();
+  const { setFocusMode, setLastSessionResult } = useAppStore();
   const [elapsed, setElapsed] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
@@ -54,9 +52,18 @@ export function FocusMode({ duration: initialDuration, missionTitle, onExit }: F
   const [saving, setSaving] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startTimeRef = useRef('');
+  const elapsedRef = useRef(0);
+  const durationRef = useRef(initialDuration);
+  const onExitRef = useRef(onExit);
+  const missionTitleRef = useRef(missionTitle);
 
+  onExitRef.current = onExit;
+  missionTitleRef.current = missionTitle;
+  durationRef.current = initialDuration;
+
+  // Timer tick
   useEffect(() => {
-    startTimeRef.current = new Date().toISOString();
+    if (!startTimeRef.current) startTimeRef.current = new Date().toISOString();
     intervalRef.current = setInterval(() => {
       setElapsed((prev) => {
         if (prev >= initialDuration) return prev;
@@ -66,76 +73,60 @@ export function FocusMode({ duration: initialDuration, missionTitle, onExit }: F
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
   }, [initialDuration]);
 
-  const elapsedRef = useRef(elapsed);
-  elapsedRef.current = elapsed;
-  const durationRef = useRef(initialDuration);
-  durationRef.current = initialDuration;
+  // Sync ref
+  useEffect(() => { elapsedRef.current = elapsed; }, [elapsed]);
 
-  useEffect(() => {
-    if (elapsedRef.current >= durationRef.current && elapsedRef.current >= 5) {
-      handleComplete();
-    }
-  }, [elapsed]);
-
-  const handleComplete = useCallback(async () => {
+  const saveAndFinish = useCallback(async (showCeleb: boolean) => {
     if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
+    const currentElapsed = elapsedRef.current;
+    if (currentElapsed < 5) { onExitRef.current(); return; }
     setSaving(true);
     try {
       const now = new Date();
-      const start = startTimeRef.current ? new Date(startTimeRef.current) : new Date(now.getTime() - elapsed * 1000);
+      const start = startTimeRef.current ? new Date(startTimeRef.current) : new Date(now.getTime() - currentElapsed * 1000);
       const { activeMission } = useAppStore.getState();
       const res = await fetch('/api/sessions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           missionId: activeMission?.id || null,
-          duration: elapsed,
+          duration: currentElapsed,
           startedAt: start.toISOString(),
           endedAt: now.toISOString(),
         }),
       });
       if (!res.ok) throw new Error();
-      const title = missionTitle || activeMission?.title || null;
-      setCelebrationData({ duration: elapsed, mission: title });
-      setLastSessionResult({ duration: elapsed, missionTitle: title });
-      setShowCelebration(true);
+      const title = missionTitleRef.current || activeMission?.title || null;
+      if (showCeleb) {
+        setCelebrationData({ duration: currentElapsed, mission: title });
+        setLastSessionResult({ duration: currentElapsed, missionTitle: title });
+        setShowCelebration(true);
+      } else {
+        toast.success(`Session saved — ${formatTime(currentElapsed)}`);
+        onExitRef.current();
+      }
     } catch {
       toast.error('Failed to save session');
-      onExit();
+      onExitRef.current();
     } finally {
       setSaving(false);
     }
-  }, [elapsed, missionTitle, onExit, setLastSessionResult]);
+  }, [setLastSessionResult]);
 
-  const handleStop = useCallback(async () => {
-    if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
-    if (elapsed < 5) { onExit(); return; }
-    setSaving(true);
-    try {
-      const now = new Date();
-      const start = startTimeRef.current ? new Date(startTimeRef.current) : new Date(now.getTime() - elapsed * 1000);
-      const { activeMission } = useAppStore.getState();
-      await fetch('/api/sessions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          missionId: activeMission?.id || null,
-          duration: elapsed,
-          startedAt: start.toISOString(),
-          endedAt: now.toISOString(),
-        }),
-      });
-      toast.success(`Session saved — ${formatTime(elapsed)}`);
-    } catch { /* silent */ }
-    finally { setSaving(false); onExit(); }
-  }, [elapsed, missionTitle, onExit]);
+  // Auto-complete when time is up
+  const completedRef = useRef(false);
+  useEffect(() => {
+    if (elapsed >= initialDuration && elapsed >= 5 && !completedRef.current) {
+      completedRef.current = true;
+      saveAndFinish(true);
+    }
+  }, [elapsed, initialDuration, saveAndFinish]);
+
+  const handleStop = useCallback(() => { saveAndFinish(false); }, [saveAndFinish]);
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        handleStop();
-      }
+      if (e.key === 'Escape') { e.preventDefault(); handleStop(); }
     };
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
@@ -146,14 +137,12 @@ export function FocusMode({ duration: initialDuration, missionTitle, onExit }: F
   const circumference = 2 * Math.PI * 120;
 
   if (showCelebration) {
-    return <CelebrationScreen duration={celebrationData.duration} missionTitle={celebrationData.mission} onExit={onExit} />;
+    return <CelebrationScreen duration={celebrationData.duration} missionTitle={celebrationData.mission} onExit={() => { setShowCelebration(false); setFocusMode('idle'); }} />;
   }
 
   return (
     <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
       className="fixed inset-0 z-[200] flex flex-col items-center justify-center bg-zinc-950 overflow-hidden"
     >
       {/* Background gradient */}
@@ -189,7 +178,7 @@ export function FocusMode({ duration: initialDuration, missionTitle, onExit }: F
         {missionTitle && (
           <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="absolute top-8 left-0 right-0 text-center">
             <span className="inline-flex items-center gap-2 rounded-full border border-emerald-500/15 bg-emerald-500/[0.06] px-4 py-1.5 backdrop-blur-sm">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-breathe" />
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
               <span className="text-xs font-medium text-emerald-400/90">{missionTitle}</span>
             </span>
           </motion.div>
@@ -229,7 +218,7 @@ export function FocusMode({ duration: initialDuration, missionTitle, onExit }: F
           onClick={() => setIsPaused(!isPaused)}
           className="flex h-14 w-14 items-center justify-center rounded-2xl border border-white/[0.08] bg-white/[0.04] text-zinc-300 transition-colors hover:bg-white/[0.06]"
         >
-          <Pause className={cn('h-5 w-5', isPaused && 'text-amber-400')} />
+          {isPaused ? <Play className={cn('h-5 w-5 text-amber-400')} /> : <Pause className={cn('h-5 w-5')} />}
         </motion.button>
         <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
           onClick={handleStop} disabled={saving}

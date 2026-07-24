@@ -88,7 +88,7 @@ export function Heatmap() {
             </div>
           </div>
         )}
-        {/* Tooltip */
+        {/* Tooltip */}
         {tooltip && (
           <div
             className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-full rounded-lg border border-white/[0.08] bg-zinc-900/95 px-3 py-2 text-xs shadow-xl backdrop-blur-sm"

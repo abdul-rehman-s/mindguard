@@ -42,7 +42,7 @@ export function CelebrationScreen({ duration, missionTitle, onExit }: Celebratio
 
   return (
     <motion.div
-n      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
       className="fixed inset-0 z-[200] flex flex-col items-center justify-center bg-zinc-950 overflow-hidden"
     >
       {/* Confetti */}
