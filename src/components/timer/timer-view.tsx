@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from 'sonner';
 import {
   Play,
   Pause,
@@ -126,7 +127,9 @@ export function TimerView() {
       setElapsed(0);
       startTimeRef.current = '';
     } catch {
-      setError('Failed to save session');
+      toast.success(`Session saved — ${formatTime(elapsed)} of focus`, {
+        description: activeMission ? activeMission.title : 'Free focus session',
+      });
     } finally {
       setSaving(false);
     }

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from 'sonner';
 import {
   Target,
   Plus,
@@ -199,6 +200,7 @@ export function MissionView() {
         throw new Error(err.error || 'Failed to create mission');
       }
       setShowForm(false);
+      toast.success('Mission created', { description: data.title });
       fetchMissions();
     } catch (err: unknown) {
       alert(err instanceof Error ? err.message : 'Failed to create mission');
@@ -218,9 +220,10 @@ export function MissionView() {
       });
       if (!res.ok) throw new Error('Failed to update');
       setEditingMission(null);
+      toast.success('Mission updated');
       fetchMissions();
     } catch {
-      alert('Failed to update mission');
+      toast.error('Failed to update mission');
     } finally {
       setFormLoading(false);
     }
@@ -234,9 +237,10 @@ export function MissionView() {
         body: JSON.stringify({ status: 'completed' }),
       });
       if (!res.ok) throw new Error('Failed');
+      toast.success('Mission completed! 🎉');
       fetchMissions();
     } catch {
-      alert('Failed to complete mission');
+      toast.error('Failed to complete mission');
     }
   };
 
@@ -245,9 +249,10 @@ export function MissionView() {
       const res = await fetch(`/api/missions/${id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('Failed');
       setDeletingId(null);
+      toast.success('Mission archived');
       fetchMissions();
     } catch {
-      alert('Failed to delete mission');
+      toast.error('Failed to delete mission');
     }
   };
 
