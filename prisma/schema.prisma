@@ -13,12 +13,15 @@ model User {
   name          String?
   password      String
   displayName   String?
+  onboarded     Boolean           @default(false)
+  primaryUse    String?
   createdAt     DateTime          @default(now())
   updatedAt     DateTime          @updatedAt
 
   missions      Mission[]
   focusSessions FocusSession[]
   reflections   DailyReflection[]
+  achievements  Achievement[]
 }
 
 model Mission {
@@ -62,4 +65,15 @@ model DailyReflection {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, date])
+}
+
+model Achievement {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String
+  unlockedAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, type])
 }
