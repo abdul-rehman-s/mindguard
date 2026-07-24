@@ -44,12 +44,15 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
+        const dbUser = await db.user.findUnique({ where: { id: user.id! as string }, select: { onboarded: true } });
+        if (dbUser) token.onboarded = dbUser.onboarded;
       }
       return token;
     },
     async session({ session, token }) {
       if (session.user && token.id) {
         (session.user as Record<string, unknown>).id = token.id;
+        (session.user as Record<string, unknown>).onboarded = token.onboarded;
       }
       return session;
     },

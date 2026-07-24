@@ -26,6 +26,11 @@ import { useAppStore } from '@/stores/app-store';
 import { cn } from '@/lib/utils';
 import type { DashboardStats, FocusSession } from '@/types';
 
+import { Heatmap } from './heatmap';
+import { Achievements } from './achievements';
+import { Timeline } from './timeline';
+import { AttentionScore } from './attention-score';
+
 const container = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { staggerChildren: 0.07 } },
@@ -350,6 +355,16 @@ export function DashboardView() {
           </Card>
         </motion.div>
       </div>
+
+      {/* New widgets row */}
+      <motion.div variants={item} className="mt-4 grid gap-4 lg:grid-cols-3">
+        <Timeline />
+        <AttentionScore />
+        <div className="space-y-4">
+          <Heatmap />
+          <Achievements />
+        </div>
+      </motion.div>
     </motion.div>
   );
 }

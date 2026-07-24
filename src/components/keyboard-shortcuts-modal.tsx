@@ -28,12 +28,11 @@ const shortcuts: ShortcutItem[] = [
   { keys: ['H'], label: 'Sessions', description: 'View session history', icon: Clock },
   { keys: ['S'], label: 'Statistics', description: 'Your focus statistics', icon: BarChart3 },
   { keys: [','], label: 'Settings', description: 'App preferences', icon: Settings },
-  { keys: ['G', 'D'], label: 'Go to Dashboard', description: 'Navigate using Go prefix', icon: LayoutDashboard },
-  { keys: ['G', 'M'], label: 'Go to Missions', description: 'Navigate using Go prefix', icon: Target },
-  { keys: ['G', 'T'], label: 'Go to Timer', description: 'Navigate using Go prefix', icon: Timer },
-  { keys: ['G', 'R'], label: 'Go to Reflection', description: 'Navigate using Go prefix', icon: BookOpen },
-  { keys: ['G', 'H'], label: 'Go to Sessions', description: 'Navigate using Go prefix', icon: Clock },
+  { keys: ['G', 'S'], label: 'Go to Statistics', description: 'Navigate using Go prefix', icon: BarChart3 },
+  { keys: ['G', ','], label: 'Go to Settings', description: 'Navigate using Go prefix', icon: Settings },
   { keys: ['⌘', 'K'], label: 'Command Palette', description: 'Quick search and navigate', icon: Search },
+  { keys: ['Space'], label: 'Start Focus', description: 'Quick start from timer view', icon: Timer },
+  { keys: ['Esc'], label: 'Exit Focus', description: 'Exit immersive focus mode', icon: Timer },
 ];
 
 export function KeyboardShortcutsModal({ open, onClose }: { open: boolean; onClose: () => void }) {

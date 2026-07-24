@@ -19,6 +19,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { useAppStore } from '@/stores/app-store';
 import { cn } from '@/lib/utils';
+import { MissionLaunch } from './mission-launch';
 import type { TimerState, Mission } from '@/types';
 
 const PRESETS = [
@@ -152,7 +153,7 @@ function CelebrationOverlay({ show, duration }: { show: boolean; duration: strin
 
 // ---- Main Component ----
 export function TimerView() {
-  const { activeMission, setActiveMission, setView } = useAppStore();
+  const { activeMission, setActiveMission, setView, setFocusMode } = useAppStore();
   const [timerState, setTimerState] = useState<TimerState>('idle');
   const [elapsed, setElapsed] = useState(0);
   const [duration, setDuration] = useState(1500);
@@ -163,6 +164,7 @@ export function TimerView() {
   const [celebrationDuration, setCelebrationDuration] = useState('');
   const [showCustomInput, setShowCustomInput] = useState(false);
   const [customMinutes, setCustomMinutes] = useState('');
+  const [showLaunch, setShowLaunch] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startTimeRef = useRef<string>('');
 
@@ -221,8 +223,17 @@ export function TimerView() {
   }, [elapsed, timerState]);
 
   const handleStart = () => {
-    setTimerState('running');
+    setShowLaunch(true);
     setError('');
+  };
+
+  const handleLaunchStart = () => {
+    setShowLaunch(false);
+    setFocusMode('focus');
+  };
+
+  const handleLaunchCancel = () => {
+    setShowLaunch(false);
   };
 
   const handlePause = () => {
@@ -552,6 +563,18 @@ export function TimerView() {
           )}
         </CardContent>
       </Card>
+
+      {/* Mission Launch Overlay */}
+      <AnimatePresence>
+        {showLaunch && (
+          <MissionLaunch
+            missionTitle={activeMission?.title || null}
+            duration={Math.round(duration / 60)}
+            onStart={handleLaunchStart}
+            onCancel={handleLaunchCancel}
+          />
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }

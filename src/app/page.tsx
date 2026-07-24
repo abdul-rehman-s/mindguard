@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore } from '@/stores/app-store';
@@ -13,21 +13,39 @@ import { ReflectionView } from '@/components/reflection/reflection-view';
 import { SessionHistoryView } from '@/components/sessions/session-history-view';
 import { StatsView } from '@/components/stats/stats-view';
 import { SettingsView } from '@/components/settings/settings-view';
+import { OnboardingFlow } from '@/components/onboarding/onboarding-flow';
+import { FocusMode } from '@/components/timer/focus-mode';
 import { Loader2 } from 'lucide-react';
 import { useMounted } from '@/hooks/use-mounted';
 
 export default function HomePage() {
   const mounted = useMounted();
   const { data: session, status } = useSession();
-  const { currentView, setUser, setView, setLoading } = useAppStore();
+  const { currentView, setUser, setView, setLoading, focusMode, setFocusMode, activeMission } = useAppStore();
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [onboardingChecked, setOnboardingChecked] = useState(false);
+
+  // Check onboarding status
+  useEffect(() => {
+    if (status === 'authenticated' && !onboardingChecked) {
+      setOnboardingChecked(true);
+      const user = session?.user as Record<string, unknown> | undefined;
+      if (!user?.onboarded) {
+        fetch('/api/onboarding').then(r => r.json()).then(d => {
+          if (!d.onboarded) setShowOnboarding(true);
+        }).catch(() => {});
+      }
+    }
+  }, [status, session, onboardingChecked]);
 
   useEffect(() => {
-    if (status === 'authenticated' && session?.user) {
+    if (status === 'authenticated' && session?.user && !showOnboarding) {
       const user = session.user as Record<string, unknown>;
       setUser({
         id: (user.id as string) || '',
         email: (user.email as string) || '',
         name: (user.name as string) || null,
+        onboarded: (user.onboarded as boolean) ?? true,
       });
       if (currentView === 'landing') {
         setView('dashboard');
@@ -37,7 +55,19 @@ export default function HomePage() {
       setView('landing');
     }
     setLoading(false);
-  }, [status, session, setUser, setView, currentView, setLoading]);
+  }, [status, session, setUser, setView, currentView, setLoading, showOnboarding]);
+
+  const handleOnboardingComplete = () => {
+    setShowOnboarding(false);
+    // Refresh session to get updated onboarded flag
+    const user = session?.user as Record<string, unknown>;
+    if (user) setUser({ ...useAppStore.getState().user!, onboarded: true });
+    setView('dashboard');
+  };
+
+  const handleFocusExit = () => {
+    setFocusMode('idle');
+  };
 
   if (!mounted || status === 'loading') {
     return (
@@ -56,6 +86,23 @@ export default function HomePage() {
 
   if (currentView === 'landing' || status === 'unauthenticated') {
     return <LandingPage />;
+  }
+
+  // Show onboarding for first-time users
+  if (showOnboarding) {
+    return <OnboardingFlow onComplete={handleOnboardingComplete} />;
+  }
+
+  // Focus mode overlay
+  if (focusMode === 'focus') {
+    const dur = useAppStore.getState().stats?.avgSessionMinutes ? useAppStore.getState().stats!.avgSessionMinutes * 60 : 1500;
+    return (
+      <FocusMode
+        duration={1500}
+        missionTitle={activeMission?.title || null}
+        onExit={handleFocusExit}
+      />
+    );
   }
 
   return (
