@@ -129,12 +129,12 @@ export function ReflectionView() {
 
   return (
     <motion.div variants={container} initial="hidden" animate="visible">
-      <motion.div variants={item} className="mb-8">
+      <motion.div variants={item} className="mb-10 pt-2">
         <div className="flex items-center gap-2 mb-1">
           <BookOpen className="h-5 w-5 text-emerald-400" />
-          <h2 className="text-lg font-semibold text-zinc-100">Daily Reflection</h2>
+          <h2 className="text-[1.65rem] font-semibold tracking-[-0.02em] text-zinc-100">Daily Reflection</h2>
         </div>
-        <p className="text-sm text-zinc-500">
+        <p className="mt-1.5 text-sm text-zinc-500">
           Three questions to close your day with intention.
         </p>
       </motion.div>
@@ -151,8 +151,8 @@ export function ReflectionView() {
           const Icon = q.icon;
           return (
             <motion.div key={q.id} variants={item}>
-              <Card className="border-zinc-800/50 bg-zinc-900/30">
-                <CardContent className="p-5">
+              <Card className="card-glow border-white/[0.06] bg-white/[0.02]">
+                <CardContent className="p-6">
                   <div className="mb-3 flex items-center gap-3">
                     <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/10">
                       <Icon className="h-4 w-4 text-emerald-400" />
@@ -169,7 +169,7 @@ export function ReflectionView() {
                     placeholder={q.placeholder}
                     value={form[q.id as keyof typeof form]}
                     onChange={(e) => handleChange(q.id, e.target.value)}
-                    className="border-zinc-800 bg-zinc-800/50 text-sm text-zinc-200 placeholder:text-zinc-600 focus-visible:border-emerald-500/50 focus-visible:ring-emerald-500/20 min-h-[80px] resize-none"
+                    className="border-white/[0.06] bg-white/[0.03] text-sm text-zinc-200 placeholder:text-zinc-600 focus-visible:border-emerald-500/40 focus-visible:ring-emerald-500/20 min-h-[100px] resize-none"
                     required
                   />
                 </CardContent>
@@ -187,7 +187,7 @@ export function ReflectionView() {
               !form.wentWell.trim() ||
               !form.tomorrowMission.trim()
             }
-            className="bg-emerald-500 text-white hover:bg-emerald-600"
+            className="btn-glow bg-gradient-to-b from-emerald-500 to-emerald-600 text-white shadow-lg shadow-emerald-500/15 hover:from-emerald-400 hover:to-emerald-500 hover:shadow-emerald-500/25"
           >
             {saving ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />

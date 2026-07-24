@@ -2,11 +2,12 @@
 
 import { AppSidebar } from './app-sidebar';
 import { AppHeader } from './app-header';
+import { CommandPalette } from '@/components/command-palette/command-palette';
 import type { ReactNode } from 'react';
 
 export function AppShell({ children }: { children: ReactNode }) {
   return (
-    <div className="relative min-h-screen bg-zinc-950">
+    <div className="relative min-h-screen bg-zinc-950 noise-bg">
       <AppSidebar />
       <div className="lg:pl-[240px]">
         <AppHeader />
@@ -16,6 +17,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         </main>
       </div>
+      <CommandPalette />
     </div>
   );
 }

@@ -6,23 +6,12 @@ import {
   Play,
   Pause,
   Square,
-  Timer,
   Target,
-  Check,
   Loader2,
   AlertCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { useAppStore } from '@/stores/app-store';
 import { cn } from '@/lib/utils';
 import type { TimerState, Mission } from '@/types';
@@ -154,152 +143,191 @@ export function TimerView() {
 
   const progress = duration > 0 ? (elapsed / duration) * 100 : 0;
   const isIdle = timerState === 'idle';
+  const isRunning = timerState === 'running';
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4 }}
-      className="flex flex-col items-center"
+      transition={{ duration: 0.5, ease: [0.25, 0.1, 0.25, 1] }}
+      className="app-grid-bg flex min-h-full flex-col items-center -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8"
     >
       {/* Mission indicator */}
-      {activeMission && (
-        <motion.div
-          initial={{ opacity: 0, y: -8 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-8 flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/5 px-4 py-1.5"
-        >
-          <Target className="h-3.5 w-3.5 text-emerald-400" />
-          <span className="text-xs font-medium text-emerald-400">{activeMission.title}</span>
-        </motion.div>
-      )}
+      <AnimatePresence>
+        {activeMission && (
+          <motion.div
+            initial={{ opacity: 0, y: -8, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -8, scale: 0.95 }}
+            className="mb-10 flex items-center gap-2.5 rounded-full border border-emerald-500/15 bg-emerald-500/[0.06] px-4 py-2 backdrop-blur-sm"
+          >
+            <div className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-breathe" />
+            <Target className="h-3.5 w-3.5 text-emerald-400/80" />
+            <span className="text-xs font-medium text-emerald-400/90">{activeMission.title}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      {/* Timer Display */}
-      <div className="relative mb-8 flex items-center justify-center">
-        {/* Ring */}
+      {/* Timer Ring */}
+      <div className="relative mb-10 flex items-center justify-center">
+        {/* Outer glow when running */}
+        {isRunning && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: [0.15, 0.25, 0.15], scale: [1, 1.02, 1] }}
+            transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+            className="absolute h-72 w-72 rounded-full bg-emerald-500/20 blur-3xl sm:h-80 sm:w-80"
+          />
+        )}
+
         <svg className="h-64 w-64 -rotate-90 sm:h-72 sm:w-72" viewBox="0 0 200 200">
+          {/* Track */}
           <circle
             cx="100" cy="100" r="90"
             fill="none"
             stroke="currentColor"
-            className="text-zinc-800/50"
-            strokeWidth="4"
+            className="text-white/[0.04]"
+            strokeWidth="3"
           />
+          {/* Progress */}
           <motion.circle
             cx="100" cy="100" r="90"
             fill="none"
-            stroke="url(#gradient)"
-            strokeWidth="4"
+            stroke={isRunning ? 'url(#timer-gradient)' : 'url(#timer-gradient-idle)'}
+            strokeWidth="3"
             strokeLinecap="round"
             strokeDasharray={2 * Math.PI * 90}
             strokeDashoffset={2 * Math.PI * 90 * (1 - progress / 100)}
             initial={false}
             animate={{ strokeDashoffset: 2 * Math.PI * 90 * (1 - progress / 100) }}
             transition={{ duration: 0.3, ease: 'linear' }}
+            style={isRunning ? { filter: 'drop-shadow(0 0 6px rgba(16, 185, 129, 0.4))' } : undefined}
           />
           <defs>
-            <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+            <linearGradient id="timer-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
               <stop offset="0%" stopColor="#10b981" />
               <stop offset="100%" stopColor="#14b8a6" />
             </linearGradient>
+            <linearGradient id="timer-gradient-idle" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="#10b981" stopOpacity="0.5" />
+              <stop offset="100%" stopColor="#14b8a6" stopOpacity="0.5" />
+            </linearGradient>
           </defs>
         </svg>
+
         <div className="absolute flex flex-col items-center">
-          <AnimatePresence mode="wait">
-            <motion.span
-              key={elapsed}
-              initial={false}
-              className="font-mono text-5xl font-light tracking-tight text-zinc-100 sm:text-6xl"
-            >
-              {formatTime(elapsed)}
-            </motion.span>
-          </AnimatePresence>
-          <span className="mt-1 text-xs text-zinc-500">
-            {timerState === 'idle' ? 'ready' : timerState === 'running' ? 'focusing' : 'paused'}
-          </span>
+          <motion.span
+            key={elapsed}
+            initial={false}
+            className={cn(
+              'font-mono text-5xl font-light tracking-tight sm:text-6xl tabular-nums transition-colors duration-500',
+              isRunning ? 'text-emerald-50' : isIdle ? 'text-zinc-200' : 'text-zinc-100'
+            )}
+          >
+            {formatTime(elapsed)}
+          </motion.span>
+          <motion.span
+            key={timerState}
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            className={cn(
+              'mt-1.5 text-[11px] font-medium uppercase tracking-widest',
+              isRunning ? 'text-emerald-400/60' : 'text-zinc-600'
+            )}
+          >
+            {timerState === 'idle' ? 'Ready' : timerState === 'running' ? 'Focusing' : 'Paused'}
+          </motion.span>
         </div>
       </div>
 
       {/* Controls */}
-      <div className="mb-8 flex items-center gap-3">
+      <div className="mb-10 flex items-center gap-3">
         {isIdle ? (
-          <Button
-            onClick={handleStart}
-            className="h-12 w-48 bg-emerald-500 text-white hover:bg-emerald-600"
-          >
-            <Play className="mr-2 h-5 w-5" />
-            Start Focus
-          </Button>
+          <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+            <Button
+              onClick={handleStart}
+              className="btn-glow h-12 w-52 bg-gradient-to-b from-emerald-500 to-emerald-600 text-white shadow-lg shadow-emerald-500/20 hover:from-emerald-400 hover:to-emerald-500 hover:shadow-emerald-500/30"
+            >
+              <Play className="mr-2 h-5 w-5" />
+              Start Focus
+            </Button>
+          </motion.div>
         ) : (
           <>
-            <Button
-              onClick={timerState === 'running' ? handlePause : handleStart}
-              variant="outline"
-              className="h-12 w-48 border-zinc-700 text-zinc-200 hover:bg-zinc-800"
-            >
-              {timerState === 'running' ? (
-                <><Pause className="mr-2 h-5 w-5" />Pause</>
-              ) : (
-                <><Play className="mr-2 h-5 w-5" />Resume</>
-              )}
-            </Button>
-            <Button
-              onClick={handleStop}
-              variant="outline"
-              className="h-12 w-12 border-zinc-700 text-zinc-400 hover:border-red-500/50 hover:bg-red-500/10 hover:text-red-400"
-            >
-              <Square className="h-5 w-5" />
-            </Button>
+            <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+              <Button
+                onClick={timerState === 'running' ? handlePause : handleStart}
+                variant="outline"
+                className="h-12 w-52 border-white/[0.08] text-zinc-200 hover:bg-white/[0.04] hover:text-white"
+              >
+                {timerState === 'running' ? (
+                  <><Pause className="mr-2 h-5 w-5" />Pause</>
+                ) : (
+                  <><Play className="mr-2 h-5 w-5" />Resume</>
+                )}
+              </Button>
+            </motion.div>
+            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+              <Button
+                onClick={handleStop}
+                variant="outline"
+                className="h-12 w-12 border-white/[0.06] text-zinc-500 hover:border-red-500/30 hover:bg-red-500/[0.06] hover:text-red-400"
+              >
+                <Square className="h-4 w-4" />
+              </Button>
+            </motion.div>
           </>
         )}
       </div>
 
       {saving && (
-        <div className="mb-4 flex items-center gap-2 text-xs text-zinc-400">
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mb-4 flex items-center gap-2 text-xs text-zinc-400">
           <Loader2 className="h-3.5 w-3.5 animate-spin" />
           Saving session...
-        </div>
+        </motion.div>
       )}
 
       {error && (
-        <div className="mb-4 flex items-center gap-2 text-xs text-red-400">
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mb-4 flex items-center gap-2 text-xs text-red-400">
           <AlertCircle className="h-3.5 w-3.5" />
           {error}
-        </div>
+        </motion.div>
       )}
 
-      {/* Duration Preset */}
-      <Card className="w-full max-w-sm border-zinc-800/50 bg-zinc-900/30">
-        <CardContent className="p-4">
-          <p className="mb-3 text-xs font-medium text-zinc-400">Session Duration</p>
+      {/* Duration Presets */}
+      <Card className="w-full max-w-sm border-white/[0.06] bg-white/[0.02]">
+        <CardContent className="p-5">
+          <p className="mb-4 text-[11px] font-medium uppercase tracking-wider text-zinc-500">Session Duration</p>
           <div className="flex flex-wrap gap-2">
             {PRESETS.map((preset) => (
-              <button
+              <motion.button
                 key={preset.label}
+                whileHover={isIdle ? { scale: 1.05 } : undefined}
+                whileTap={isIdle ? { scale: 0.95 } : undefined}
                 disabled={!isIdle}
                 onClick={() => {
                   setDuration(preset.seconds);
                   setSelectedPreset(preset.label);
                 }}
                 className={cn(
-                  'rounded-lg px-3 py-1.5 text-xs font-medium transition-all',
+                  'rounded-lg px-3.5 py-2 text-xs font-medium transition-all duration-200',
                   selectedPreset === preset.label && isIdle
-                    ? 'bg-emerald-500/10 text-emerald-400 ring-1 ring-emerald-500/30'
-                    : 'bg-zinc-800/50 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-300',
-                  !isIdle && 'opacity-50 cursor-not-allowed'
+                    ? 'bg-emerald-500/10 text-emerald-400 shadow-sm shadow-emerald-500/10 ring-1 ring-emerald-500/20'
+                    : 'bg-white/[0.03] text-zinc-500 hover:bg-white/[0.06] hover:text-zinc-300',
+                  !isIdle && 'opacity-40 cursor-not-allowed'
                 )}
               >
                 {preset.label}
-              </button>
+              </motion.button>
             ))}
           </div>
 
           {!activeMission && isIdle && (
-            <div className="mt-4 rounded-lg border border-zinc-800 bg-zinc-800/30 p-3">
-              <p className="text-xs text-zinc-500">
+            <div className="mt-5 rounded-xl border border-dashed border-white/[0.06] bg-white/[0.01] p-4">
+              <p className="text-xs leading-relaxed text-zinc-500">
                 No active mission.{' '}
                 <button
-                  className="font-medium text-emerald-400 hover:text-emerald-300"
+                  className="font-medium text-emerald-400/80 hover:text-emerald-300"
                   onClick={() => setView('mission')}
                 >
                   Create one
