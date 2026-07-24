@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   BookOpen,
   Loader2,
@@ -10,12 +10,16 @@ import {
   BrainCircuit,
   Sparkles,
   ArrowRight,
+  ChevronDown,
+  ChevronUp,
+  History,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { useAppStore } from '@/stores/app-store';
+import { cn } from '@/lib/utils';
+import type { DailyReflection } from '@/types';
 
 const questions = [
   {
@@ -51,6 +55,68 @@ const item = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.5 } },
 };
 
+const MAX_CHARS = 500;
+
+function StepIndicator({ currentStep }: { currentStep: number }) {
+  return (
+    <div className="mb-8 flex items-center gap-0">
+      {questions.map((q, idx) => {
+        const Icon = q.icon;
+        const isActive = idx <= currentStep;
+        const isCurrent = idx === currentStep;
+        return (
+          <div key={q.id} className="flex items-center">
+            <div className="flex flex-col items-center">
+              <motion.div
+                animate={{
+                  scale: isCurrent ? 1.05 : 1,
+                }}
+                transition={{ duration: 0.2 }}
+                className={cn(
+                  'flex h-9 w-9 items-center justify-center rounded-xl transition-all duration-300',
+                  isActive
+                    ? 'bg-emerald-500/15 ring-1 ring-emerald-500/20'
+                    : 'bg-white/[0.03] ring-1 ring-white/[0.06]'
+                )}
+              >
+                <Icon className={cn(
+                  'h-4 w-4 transition-colors duration-300',
+                  isActive ? 'text-emerald-400' : 'text-zinc-700'
+                )} />
+              </motion.div>
+              <span className={cn(
+                'mt-1.5 text-[10px] font-medium uppercase tracking-wider',
+                isCurrent ? 'text-emerald-400/60' : 'text-zinc-700'
+              )}>
+                {idx + 1}/3
+              </span>
+            </div>
+            {idx < questions.length - 1 && (
+              <div className={cn(
+                'mx-3 h-[2px] w-12 rounded-full transition-colors duration-300',
+                idx < currentStep ? 'bg-emerald-500/30' : 'bg-white/[0.04]'
+              )} />
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function formatDate(dateStr: string): string {
+  const date = new Date(dateStr);
+  const now = new Date();
+  const isToday = date.toDateString() === now.toDateString();
+  const yesterday = new Date(now);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const isYesterday = date.toDateString() === yesterday.toDateString();
+
+  if (isToday) return 'Today';
+  if (isYesterday) return 'Yesterday';
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined });
+}
+
 export function ReflectionView() {
   const { todayReflection, setTodayReflection } = useAppStore();
   const [loading, setLoading] = useState(true);
@@ -62,6 +128,9 @@ export function ReflectionView() {
     wentWell: '',
     tomorrowMission: '',
   });
+  const [activeField, setActiveField] = useState<string | null>(null);
+  const [reflections, setReflections] = useState<DailyReflection[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
 
   const fetchReflection = useCallback(async () => {
     setLoading(true);
@@ -78,6 +147,7 @@ export function ReflectionView() {
         });
         setSaved(true);
       }
+      setReflections(data.reflections || []);
     } catch {
       setError('Failed to load reflection');
     } finally {
@@ -85,9 +155,7 @@ export function ReflectionView() {
     }
   }, [setTodayReflection]);
 
-  useEffect(() => {
-    fetchReflection();
-  }, [fetchReflection]);
+  useEffect(() => { fetchReflection(); }, [fetchReflection]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -107,6 +175,12 @@ export function ReflectionView() {
       });
       if (!res.ok) throw new Error('Failed to save');
       setSaved(true);
+      // Refresh reflections list
+      const getRes = await fetch('/api/reflections');
+      if (getRes.ok) {
+        const data = await getRes.json();
+        setReflections(data.reflections || []);
+      }
     } catch {
       setError('Failed to save reflection');
     } finally {
@@ -115,9 +189,18 @@ export function ReflectionView() {
   };
 
   const handleChange = (id: string, value: string) => {
-    setForm((prev) => ({ ...prev, [id]: value }));
-    setSaved(false);
+    if (value.length <= MAX_CHARS) {
+      setForm((prev) => ({ ...prev, [id]: value }));
+      setSaved(false);
+    }
   };
+
+  const currentStep = questions.findIndex((q) => q.id === activeField);
+  const completedSteps = questions.filter((q) => form[q.id as keyof typeof form].trim().length > 0).length;
+
+  // Filter out today from history
+  const today = new Date().toISOString().split('T')[0];
+  const historyReflections = reflections.filter((r) => r.date !== today);
 
   if (loading) {
     return (
@@ -129,7 +212,7 @@ export function ReflectionView() {
 
   return (
     <motion.div variants={container} initial="hidden" animate="visible">
-      <motion.div variants={item} className="mb-10 pt-2">
+      <motion.div variants={item} className="mb-2 pt-2">
         <div className="flex items-center gap-2 mb-1">
           <BookOpen className="h-5 w-5 text-emerald-400" />
           <h2 className="text-[1.65rem] font-semibold tracking-[-0.02em] text-zinc-100">Daily Reflection</h2>
@@ -139,6 +222,11 @@ export function ReflectionView() {
         </p>
       </motion.div>
 
+      {/* Step Progress Indicator */}
+      <motion.div variants={item}>
+        <StepIndicator currentStep={currentStep >= 0 ? currentStep : completedSteps - 1} />
+      </motion.div>
+
       {error && (
         <motion.div variants={item} className="mb-4 flex items-center gap-2 rounded-lg border border-red-500/20 bg-red-500/5 px-4 py-2.5">
           <AlertCircle className="h-4 w-4 text-red-400" />
@@ -146,18 +234,29 @@ export function ReflectionView() {
         </motion.div>
       )}
 
-      <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-5">
         {questions.map((q, idx) => {
           const Icon = q.icon;
+          const charCount = form[q.id as keyof typeof form].length;
+          const isNearLimit = charCount > MAX_CHARS * 0.8;
           return (
             <motion.div key={q.id} variants={item}>
-              <Card className="card-glow border-white/[0.06] bg-white/[0.02]">
+              <Card className={cn(
+                'card-glow border-white/[0.06] bg-white/[0.02] transition-colors duration-200',
+                activeField === q.id && 'border-emerald-500/15'
+              )}>
                 <CardContent className="p-6">
                   <div className="mb-3 flex items-center gap-3">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/10">
-                      <Icon className="h-4 w-4 text-emerald-400" />
+                    <div className={cn(
+                      'flex h-8 w-8 items-center justify-center rounded-lg transition-colors duration-200',
+                      activeField === q.id ? 'bg-emerald-500/15' : 'bg-emerald-500/10'
+                    )}>
+                      <Icon className={cn(
+                        'h-4 w-4 transition-colors duration-200',
+                        activeField === q.id ? 'text-emerald-400' : 'text-emerald-400/80'
+                      )} />
                     </div>
-                    <div>
+                    <div className="flex-1">
                       <span className="text-[10px] font-medium uppercase tracking-wider text-zinc-500">
                         Question {idx + 1}
                       </span>
@@ -165,13 +264,23 @@ export function ReflectionView() {
                     </div>
                   </div>
                   <p className="mb-3 text-xs text-zinc-500">{q.sub}</p>
-                  <Textarea
-                    placeholder={q.placeholder}
-                    value={form[q.id as keyof typeof form]}
-                    onChange={(e) => handleChange(q.id, e.target.value)}
-                    className="border-white/[0.06] bg-white/[0.03] text-sm text-zinc-200 placeholder:text-zinc-600 focus-visible:border-emerald-500/40 focus-visible:ring-emerald-500/20 min-h-[100px] resize-none"
-                    required
-                  />
+                  <div className="relative">
+                    <Textarea
+                      placeholder={q.placeholder}
+                      value={form[q.id as keyof typeof form]}
+                      onChange={(e) => handleChange(q.id, e.target.value)}
+                      onFocus={() => setActiveField(q.id)}
+                      onBlur={() => setActiveField(null)}
+                      className="border-white/[0.06] bg-white/[0.03] text-sm text-zinc-200 placeholder:text-zinc-600 focus-visible:border-emerald-500/40 focus-visible:ring-emerald-500/20 min-h-[100px] resize-none pr-14"
+                      required
+                    />
+                    <span className={cn(
+                      'absolute bottom-3 right-3 text-[10px] tabular-nums transition-colors',
+                      isNearLimit ? 'text-amber-400/60' : 'text-zinc-700'
+                    )}>
+                      {charCount}/{MAX_CHARS}
+                    </span>
+                  </div>
                 </CardContent>
               </Card>
             </motion.div>
@@ -207,6 +316,56 @@ export function ReflectionView() {
           )}
         </motion.div>
       </form>
+
+      {/* Reflection History */}
+      {historyReflections.length > 0 && (
+        <motion.div variants={item} className="mt-10">
+          <button
+            onClick={() => setShowHistory(!showHistory)}
+            className="mb-4 flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-zinc-500 transition-colors hover:text-zinc-300"
+          >
+            <History className="h-3.5 w-3.5" />
+            Past Reflections
+            <span className="rounded-full bg-white/[0.06] px-1.5 py-0.5 text-[10px] tabular-nums">{historyReflections.length}</span>
+            {showHistory ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+          </button>
+
+          <AnimatePresence>
+            {showHistory && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="flex flex-col gap-3 overflow-hidden"
+              >
+                {historyReflections.slice(0, 7).map((r) => (
+                  <Card key={r.id} className="card-glow border-white/[0.04] bg-white/[0.01]">
+                    <CardContent className="p-4">
+                      <p className="mb-3 text-[11px] font-medium uppercase tracking-wider text-zinc-600">
+                        {formatDate(r.date)}
+                      </p>
+                      <div className="flex flex-col gap-2.5">
+                        <div>
+                          <span className="text-[10px] font-medium uppercase tracking-wider text-zinc-600">Distractions</span>
+                          <p className="mt-0.5 text-xs leading-relaxed text-zinc-400 line-clamp-2">{r.distraction}</p>
+                        </div>
+                        <div>
+                          <span className="text-[10px] font-medium uppercase tracking-wider text-zinc-600">Went Well</span>
+                          <p className="mt-0.5 text-xs leading-relaxed text-zinc-400 line-clamp-2">{r.wentWell}</p>
+                        </div>
+                        <div>
+                          <span className="text-[10px] font-medium uppercase tracking-wider text-zinc-600">Tomorrow</span>
+                          <p className="mt-0.5 text-xs leading-relaxed text-emerald-400/70 line-clamp-1">{r.tomorrowMission}</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </motion.div>
+      )}
     </motion.div>
   );
 }

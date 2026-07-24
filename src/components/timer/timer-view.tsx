@@ -11,9 +11,12 @@ import {
   Loader2,
   AlertCircle,
   Trophy,
+  Settings2,
+  X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { useAppStore } from '@/stores/app-store';
 import { cn } from '@/lib/utils';
 import type { TimerState, Mission } from '@/types';
@@ -36,10 +39,53 @@ function formatTime(totalSeconds: number): string {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
-const particles = Array.from({ length: 12 }, (_, i) => ({
+// ---- Ambient Particles ----
+const ambientParticles = Array.from({ length: 20 }, (_, i) => ({
   id: i,
-  x: (Math.random() - 0.5) * 200,
-  y: -(Math.random() * 150 + 50),
+  x: Math.random() * 100,
+  y: Math.random() * 100,
+  size: Math.random() * 3 + 1,
+  duration: Math.random() * 15 + 10,
+  delay: Math.random() * 5,
+  opacity: Math.random() * 0.3 + 0.05,
+}));
+
+function AmbientParticles({ show }: { show: boolean }) {
+  if (!show) return null;
+  return (
+    <div className="pointer-events-none absolute inset-0 overflow-hidden">
+      {ambientParticles.map((p) => (
+        <motion.div
+          key={p.id}
+          className="absolute rounded-full bg-emerald-400"
+          style={{
+            left: `${p.x}%`,
+            top: `${p.y}%`,
+            width: p.size,
+            height: p.size,
+          }}
+          animate={{
+            y: [0, -30, 0],
+            x: [0, Math.random() * 20 - 10, 0],
+            opacity: [p.opacity, p.opacity * 2, p.opacity],
+          }}
+          transition={{
+            duration: p.duration,
+            repeat: Infinity,
+            delay: p.delay,
+            ease: 'easeInOut',
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+// ---- Celebration Overlay ----
+const celebrationParticles = Array.from({ length: 16 }, (_, i) => ({
+  id: i,
+  x: (Math.random() - 0.5) * 240,
+  y: -(Math.random() * 180 + 60),
   rotate: Math.random() * 360,
   scale: Math.random() * 0.5 + 0.5,
   delay: Math.random() * 0.3,
@@ -56,8 +102,7 @@ function CelebrationOverlay({ show, duration }: { show: boolean; duration: strin
           transition={{ duration: 0.5 }}
           className="pointer-events-none absolute inset-0 z-20 flex flex-col items-center justify-center"
         >
-          {/* Particles */}
-          {particles.map((p) => (
+          {celebrationParticles.map((p) => (
             <motion.div
               key={p.id}
               initial={{ x: 0, y: 0, opacity: 1, scale: 0 }}
@@ -69,13 +114,12 @@ function CelebrationOverlay({ show, duration }: { show: boolean; duration: strin
                 rotate: p.rotate,
               }}
               transition={{ duration: 1.2, delay: p.delay, ease: 'easeOut' }}
-              className="absolute h-2 w-2 rounded-full bg-emerald-400"
+              className="absolute h-2 w-2 rounded-full"
               style={{
-                background: p.id % 3 === 0 ? '#10b981' : p.id % 3 === 1 ? '#14b8a6' : '#34d399',
+                background: p.id % 4 === 0 ? '#10b981' : p.id % 4 === 1 ? '#14b8a6' : p.id % 4 === 2 ? '#34d399' : '#6ee7b7',
               }}
             />
           ))}
-          {/* Trophy Icon */}
           <motion.div
             initial={{ scale: 0, rotate: -20 }}
             animate={{ scale: 1, rotate: 0 }}
@@ -106,6 +150,7 @@ function CelebrationOverlay({ show, duration }: { show: boolean; duration: strin
   );
 }
 
+// ---- Main Component ----
 export function TimerView() {
   const { activeMission, setActiveMission, setView } = useAppStore();
   const [timerState, setTimerState] = useState<TimerState>('idle');
@@ -116,6 +161,8 @@ export function TimerView() {
   const [error, setError] = useState('');
   const [showCelebration, setShowCelebration] = useState(false);
   const [celebrationDuration, setCelebrationDuration] = useState('');
+  const [showCustomInput, setShowCustomInput] = useState(false);
+  const [customMinutes, setCustomMinutes] = useState('');
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startTimeRef = useRef<string>('');
 
@@ -131,11 +178,8 @@ export function TimerView() {
     }
   }, [setActiveMission]);
 
-  useEffect(() => {
-    fetchMissions();
-  }, [fetchMissions]);
+  useEffect(() => { fetchMissions(); }, [fetchMissions]);
 
-  // Dismiss celebration after 3s
   useEffect(() => {
     if (showCelebration) {
       const t = setTimeout(() => setShowCelebration(false), 3000);
@@ -150,10 +194,7 @@ export function TimerView() {
       }
       intervalRef.current = setInterval(() => {
         setElapsed((prev) => {
-          if (prev >= duration) {
-            // We'll handle stop in the next tick via a separate effect
-            return prev;
-          }
+          if (prev >= duration) return prev;
           return prev + 1;
         });
       }, 1000);
@@ -168,7 +209,6 @@ export function TimerView() {
     };
   }, [timerState, duration]);
 
-  // Auto-stop when elapsed reaches duration
   const elapsedRef = useRef(elapsed);
   elapsedRef.current = elapsed;
   const durationRef = useRef(duration);
@@ -220,7 +260,6 @@ export function TimerView() {
       toast.success(`Session saved — ${formatTime(elapsed)} of focus`, {
         description: activeMission ? activeMission.title : 'Free focus session',
       });
-      // Show celebration
       setCelebrationDuration(formatTime(elapsed));
       setShowCelebration(true);
       setElapsed(0);
@@ -238,12 +277,24 @@ export function TimerView() {
     if (preset) {
       setDuration(preset.seconds);
       setSelectedPreset(value);
+      setShowCustomInput(false);
     }
   };
 
+  const handleCustomDuration = () => {
+    const mins = parseInt(customMinutes, 10);
+    if (!mins || mins < 1 || mins > 180) return;
+    setDuration(mins * 60);
+    setSelectedPreset('custom');
+    setShowCustomInput(false);
+    setCustomMinutes('');
+  };
+
+  const remaining = Math.max(duration - elapsed, 0);
   const progress = duration > 0 ? (elapsed / duration) * 100 : 0;
   const isIdle = timerState === 'idle';
   const isRunning = timerState === 'running';
+  const isPaused = timerState === 'paused';
 
   return (
     <motion.div
@@ -252,8 +303,8 @@ export function TimerView() {
       transition={{ duration: 0.5, ease: [0.25, 0.1, 0.25, 1] }}
       className="app-grid-bg relative flex min-h-full flex-col items-center -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8"
     >
-      {/* Celebration Overlay */}
       <CelebrationOverlay show={showCelebration} duration={celebrationDuration} />
+      <AmbientParticles show={isRunning} />
 
       {/* Mission indicator */}
       <AnimatePresence>
@@ -264,9 +315,9 @@ export function TimerView() {
             exit={{ opacity: 0, y: -8, scale: 0.95 }}
             className="mb-10 flex items-center gap-2.5 rounded-full border border-emerald-500/15 bg-emerald-500/[0.06] px-4 py-2 backdrop-blur-sm"
           >
-            <div className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-breathe" />
+            <div className={cn('h-1.5 w-1.5 rounded-full', isRunning ? 'bg-emerald-400 animate-breathe' : isPaused ? 'bg-amber-400' : 'bg-emerald-400/50')} />
             <Target className="h-3.5 w-3.5 text-emerald-400/80" />
-            <span className="text-xs font-medium text-zinc-300" style={{ color: 'rgba(52, 211, 153, 0.9)' }}>{activeMission.title}</span>
+            <span className="text-xs font-medium" style={{ color: 'rgba(52, 211, 153, 0.9)' }}>{activeMission.title}</span>
           </motion.div>
         )}
       </AnimatePresence>
@@ -285,18 +336,12 @@ export function TimerView() {
 
         <svg className="h-64 w-64 -rotate-90 sm:h-72 sm:w-72" viewBox="0 0 200 200">
           {/* Track */}
-          <circle
-            cx="100" cy="100" r="90"
-            fill="none"
-            stroke="currentColor"
-            className="text-white/[0.04]"
-            strokeWidth="3"
-          />
+          <circle cx="100" cy="100" r="90" fill="none" stroke="currentColor" className="text-white/[0.04]" strokeWidth="3" />
           {/* Progress */}
           <motion.circle
             cx="100" cy="100" r="90"
             fill="none"
-            stroke={isRunning ? 'url(#timer-gradient)' : 'url(#timer-gradient-idle)'}
+            stroke={isRunning ? 'url(#timer-gradient)' : isPaused ? 'url(#timer-gradient-paused)' : 'url(#timer-gradient-idle)'}
             strokeWidth="3"
             strokeLinecap="round"
             strokeDasharray={2 * Math.PI * 90}
@@ -304,12 +349,16 @@ export function TimerView() {
             initial={false}
             animate={{ strokeDashoffset: 2 * Math.PI * 90 * (1 - progress / 100) }}
             transition={{ duration: 0.3, ease: 'linear' }}
-            style={isRunning ? { filter: 'drop-shadow(0 0 6px rgba(16, 185, 129, 0.4))' } : undefined}
+            style={isRunning ? { filter: 'drop-shadow(0 0 8px rgba(16, 185, 129, 0.5))' } : undefined}
           />
           <defs>
             <linearGradient id="timer-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
               <stop offset="0%" stopColor="#10b981" />
               <stop offset="100%" stopColor="#14b8a6" />
+            </linearGradient>
+            <linearGradient id="timer-gradient-paused" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="#f59e0b" stopOpacity="0.8" />
+              <stop offset="100%" stopColor="#d97706" stopOpacity="0.8" />
             </linearGradient>
             <linearGradient id="timer-gradient-idle" x1="0%" y1="0%" x2="100%" y2="0%">
               <stop offset="0%" stopColor="#10b981" stopOpacity="0.5" />
@@ -324,7 +373,7 @@ export function TimerView() {
             initial={false}
             className={cn(
               'font-mono text-5xl font-light tracking-tight sm:text-6xl tabular-nums transition-colors duration-500',
-              isRunning ? 'text-emerald-50' : isIdle ? 'text-zinc-200' : 'text-zinc-100'
+              isRunning ? 'text-emerald-50' : isPaused ? 'text-amber-50' : isIdle ? 'text-zinc-200' : 'text-zinc-100'
             )}
           >
             {formatTime(elapsed)}
@@ -335,11 +384,21 @@ export function TimerView() {
             animate={{ opacity: 1, y: 0 }}
             className={cn(
               'mt-1.5 text-[11px] font-medium uppercase tracking-widest',
-              isRunning ? 'text-emerald-400/60' : 'text-zinc-600'
+              isRunning ? 'text-emerald-400/60' : isPaused ? 'text-amber-400/60' : 'text-zinc-600'
             )}
           >
             {timerState === 'idle' ? 'Ready' : timerState === 'running' ? 'Focusing' : 'Paused'}
           </motion.span>
+          {/* Remaining time when not idle */}
+          {!isIdle && (
+            <motion.span
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="mt-1 text-[10px] tabular-nums text-zinc-700"
+            >
+              {formatTime(remaining)} remaining
+            </motion.span>
+          )}
         </div>
       </div>
 
@@ -361,7 +420,10 @@ export function TimerView() {
               <Button
                 onClick={timerState === 'running' ? handlePause : handleStart}
                 variant="outline"
-                className="h-12 w-52 border-white/[0.08] text-zinc-200 hover:bg-white/[0.04] hover:text-white"
+                className={cn(
+                  'h-12 w-52 border-white/[0.08] hover:bg-white/[0.04] hover:text-white',
+                  isPaused && 'border-amber-500/20 text-amber-400 hover:border-amber-500/30'
+                )}
               >
                 {timerState === 'running' ? (
                   <><Pause className="mr-2 h-5 w-5" />Pause</>
@@ -400,7 +462,51 @@ export function TimerView() {
       {/* Duration Presets */}
       <Card className="card-glow w-full max-w-sm border-white/[0.06] bg-white/[0.02]">
         <CardContent className="p-5">
-          <p className="mb-4 text-[11px] font-medium uppercase tracking-wider text-zinc-500">Session Duration</p>
+          <div className="mb-4 flex items-center justify-between">
+            <p className="text-[11px] font-medium uppercase tracking-wider text-zinc-500">Session Duration</p>
+            {isIdle && (
+              <button
+                onClick={() => setShowCustomInput(!showCustomInput)}
+                className="flex items-center gap-1.5 text-[11px] text-zinc-600 transition-colors hover:text-zinc-400"
+              >
+                {showCustomInput ? <X className="h-3 w-3" /> : <Settings2 className="h-3 w-3" />}
+                {showCustomInput ? 'Close' : 'Custom'}
+              </button>
+            )}
+          </div>
+
+          {/* Custom duration input */}
+          <AnimatePresence>
+            {showCustomInput && isIdle && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="overflow-hidden"
+              >
+                <div className="mb-4 flex items-center gap-2">
+                  <Input
+                    type="number"
+                    min="1"
+                    max="180"
+                    placeholder="Min (1-180)"
+                    value={customMinutes}
+                    onChange={(e) => setCustomMinutes(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleCustomDuration()}
+                    className="h-9 w-32 border-white/[0.06] bg-white/[0.03] text-sm text-zinc-200 placeholder:text-zinc-600 focus-visible:border-emerald-500/40 focus-visible:ring-emerald-500/20"
+                  />
+                  <Button
+                    onClick={handleCustomDuration}
+                    size="sm"
+                    className="h-9 bg-emerald-500/80 text-white hover:bg-emerald-500"
+                  >
+                    Set
+                  </Button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           <div className="flex flex-wrap gap-2">
             {PRESETS.map((preset) => (
               <motion.button
@@ -423,6 +529,11 @@ export function TimerView() {
                 {preset.label}
               </motion.button>
             ))}
+            {selectedPreset === 'custom' && isIdle && (
+              <div className="flex items-center rounded-lg bg-emerald-500/10 px-3.5 py-2 text-xs font-medium text-emerald-400 shadow-sm shadow-emerald-500/10 ring-1 ring-emerald-500/20">
+                {Math.round(duration / 60)} min
+              </div>
+            )}
           </div>
 
           {!activeMission && isIdle && (

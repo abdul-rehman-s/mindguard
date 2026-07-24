@@ -14,24 +14,19 @@ import {
   Database,
   Bell,
   Monitor,
+  Keyboard,
+  Info,
+  ExternalLink,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { Card, CardContent } from '@/components/ui/card';
 import { useTheme } from 'next-themes';
 import { signOut, useSession } from 'next-auth/react';
 import { useAppStore } from '@/stores/app-store';
 import { toast } from 'sonner';
-import { cn } from '@/lib/utils';
+import { KeyboardShortcutsModal } from '@/components/keyboard-shortcuts-modal';
 
 const container = {
   hidden: { opacity: 0 },
@@ -53,6 +48,7 @@ export function SettingsView() {
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
   const [exporting, setExporting] = useState(false);
+  const [showShortcuts, setShowShortcuts] = useState(false);
 
   const fetchSettings = useCallback(async () => {
     setLoading(true);
@@ -68,9 +64,7 @@ export function SettingsView() {
     }
   }, []);
 
-  useEffect(() => {
-    fetchSettings();
-  }, [fetchSettings]);
+  useEffect(() => { fetchSettings(); }, [fetchSettings]);
 
   const handleSaveProfile = async () => {
     setSaving(true);
@@ -107,10 +101,7 @@ export function SettingsView() {
 
       const exportPayload = {
         exportedAt: new Date().toISOString(),
-        user: {
-          name: session?.user?.name,
-          email: session?.user?.email,
-        },
+        user: { name: session?.user?.name, email: session?.user?.email },
         missions: Array.isArray(missions) ? missions : [],
         sessions: sessionsData.sessions || sessionsData || [],
         reflections: reflectionsData.reflections || reflectionsData || [],
@@ -166,9 +157,7 @@ export function SettingsView() {
           <Card className="card-glow border-white/[0.06] bg-white/[0.02]">
             <CardContent className="p-5">
               <div className="mb-5">
-                <Label htmlFor="settings-email" className="mb-1.5 text-xs font-medium text-zinc-400">
-                  Email
-                </Label>
+                <Label htmlFor="settings-email" className="mb-1.5 text-xs font-medium text-zinc-400">Email</Label>
                 <Input
                   id="settings-email"
                   value={session?.user?.email || ''}
@@ -177,9 +166,7 @@ export function SettingsView() {
                 />
               </div>
               <div className="mb-5">
-                <Label htmlFor="settings-name" className="mb-1.5 text-xs font-medium text-zinc-400">
-                  Display Name
-                </Label>
+                <Label htmlFor="settings-name" className="mb-1.5 text-xs font-medium text-zinc-400">Display Name</Label>
                 <Input
                   id="settings-name"
                   placeholder="Your name"
@@ -195,11 +182,7 @@ export function SettingsView() {
                   className="bg-emerald-500 text-white hover:bg-emerald-600"
                   size="sm"
                 >
-                  {saving ? (
-                    <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
-                  ) : saved ? (
-                    <Check className="mr-2 h-3.5 w-3.5" />
-                  ) : null}
+                  {saving ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : saved ? <Check className="mr-2 h-3.5 w-3.5" /> : null}
                   {saving ? 'Saving...' : saved ? 'Saved' : 'Save Changes'}
                 </Button>
                 {error && <span className="text-xs text-red-400">{error}</span>}
@@ -223,23 +206,73 @@ export function SettingsView() {
                 <div className="flex-1">
                   <p className="mb-1.5 text-sm font-medium text-zinc-200">Theme</p>
                   <p className="mb-3 text-xs text-zinc-500">Choose your preferred color scheme.</p>
-                  <Select value={theme} onValueChange={setTheme}>
-                    <SelectTrigger className="w-48 border-white/[0.06] bg-white/[0.03] text-zinc-200">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="border-white/[0.06] bg-zinc-900">
-                      <SelectItem value="dark">
-                        <span className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-zinc-900 ring-1 ring-zinc-700" /> Dark</span>
-                      </SelectItem>
-                      <SelectItem value="light">
-                        <span className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-white ring-1 ring-zinc-300" /> Light</span>
-                      </SelectItem>
-                      <SelectItem value="system">
-                        <span className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-gradient-to-r from-zinc-900 to-white" /> System</span>
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <div className="flex gap-2">
+                    {(['dark', 'light', 'system'] as const).map((t) => (
+                      <button
+                        key={t}
+                        onClick={() => setTheme(t)}
+                        className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-medium transition-all ${
+                          theme === t
+                            ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
+                            : 'border-white/[0.06] bg-white/[0.02] text-zinc-400 hover:bg-white/[0.04] hover:text-zinc-300'
+                        }`}
+                      >
+                        {t === 'dark' && <span className="h-2.5 w-2.5 rounded-full bg-zinc-900 ring-1 ring-zinc-700" />}
+                        {t === 'light' && <span className="h-2.5 w-2.5 rounded-full bg-white ring-1 ring-zinc-300" />}
+                        {t === 'system' && <span className="h-2.5 w-2.5 rounded-full bg-gradient-to-r from-zinc-900 to-white ring-1 ring-zinc-500" />}
+                        <span className="capitalize">{t}</span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* Keyboard Shortcuts */}
+        <motion.div variants={item}>
+          <div className="mb-3 flex items-center gap-2">
+            <Keyboard className="h-3.5 w-3.5 text-zinc-500" />
+            <h3 className="text-xs font-medium uppercase tracking-wider text-zinc-500">Keyboard</h3>
+          </div>
+          <Card className="card-glow border-white/[0.06] bg-white/[0.02]">
+            <CardContent className="p-5">
+              <div className="flex items-center gap-6">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-500/[0.08]">
+                  <Keyboard className="h-5 w-5 text-emerald-400/80" />
+                </div>
+                <div className="flex-1">
+                  <p className="mb-1.5 text-sm font-medium text-zinc-200">Keyboard Shortcuts</p>
+                  <p className="mb-3 text-xs text-zinc-500">Navigate faster with keyboard commands.</p>
+                </div>
+                <Button
+                  onClick={() => setShowShortcuts(true)}
+                  variant="outline"
+                  className="border-white/[0.08] text-zinc-300 hover:bg-white/[0.04] hover:text-zinc-100 shrink-0"
+                  size="sm"
+                >
+                  View All
+                </Button>
+              </div>
+              {/* Quick reference */}
+              <div className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-7">
+                {[
+                  { key: 'D', label: 'Dashboard' },
+                  { key: 'M', label: 'Missions' },
+                  { key: 'T', label: 'Timer' },
+                  { key: 'R', label: 'Reflect' },
+                  { key: 'H', label: 'History' },
+                  { key: 'S', label: 'Stats' },
+                  { key: '⌘K', label: 'Search' },
+                ].map((s) => (
+                  <div key={s.key} className="flex flex-col items-center gap-1.5 rounded-lg bg-white/[0.02] py-2.5">
+                    <kbd className="inline-flex h-6 min-w-[28px] items-center justify-center rounded-md border border-white/[0.08] bg-white/[0.04] px-1.5 text-[10px] font-medium text-zinc-400">
+                      {s.key}
+                    </kbd>
+                    <span className="text-[10px] text-zinc-600">{s.label}</span>
+                  </div>
+                ))}
               </div>
             </CardContent>
           </Card>
@@ -258,7 +291,7 @@ export function SettingsView() {
                   <Download className="h-5 w-5 text-emerald-400/80" />
                 </div>
                 <div className="flex-1">
-                  <p className="mb-1 text-sm font-medium text-zinc-200">Export Your Data</p>
+                  <p className="mb-1.5 text-sm font-medium text-zinc-200">Export Your Data</p>
                   <p className="mb-3 text-xs text-zinc-500">Download all your missions, sessions, and reflections as JSON.</p>
                 </div>
                 <Button
@@ -289,7 +322,7 @@ export function SettingsView() {
                   <Bell className="h-5 w-5 text-zinc-600" />
                 </div>
                 <div className="flex-1">
-                  <p className="mb-1 text-sm font-medium text-zinc-200">Focus Reminders</p>
+                  <p className="mb-1.5 text-sm font-medium text-zinc-200">Focus Reminders</p>
                   <p className="text-xs text-zinc-500">Get notified when it's time for your daily reflection.</p>
                 </div>
                 <span className="shrink-0 rounded-full border border-white/[0.06] bg-white/[0.03] px-3 py-1 text-[10px] font-medium uppercase tracking-wider text-zinc-500">Coming Soon</span>
@@ -298,7 +331,29 @@ export function SettingsView() {
           </Card>
         </motion.div>
 
-        {/* Account */}
+        {/* About */}
+        <motion.div variants={item}>
+          <div className="mb-3 flex items-center gap-2">
+            <Info className="h-3.5 w-3.5 text-zinc-500" />
+            <h3 className="text-xs font-medium uppercase tracking-wider text-zinc-500">About</h3>
+          </div>
+          <Card className="card-glow border-white/[0.06] bg-white/[0.02]">
+            <CardContent className="p-5">
+              <div className="flex items-center gap-4">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500/15 to-teal-500/10 ring-1 ring-emerald-500/10">
+                  <Shield className="h-6 w-6 text-emerald-400" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-zinc-100">MindGuard AI</p>
+                  <p className="mt-0.5 text-xs text-zinc-500">Your Attention Operating System</p>
+                  <p className="mt-1 text-[10px] text-zinc-700">Version 1.0.0 · Built with Next.js & Prisma</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* Account - Sign Out */}
         <motion.div variants={item}>
           <div className="mb-3 flex items-center gap-2">
             <Shield className="h-3.5 w-3.5 text-zinc-500" />
@@ -325,6 +380,9 @@ export function SettingsView() {
           </Card>
         </motion.div>
       </div>
+
+      {/* Keyboard Shortcuts Modal */}
+      <KeyboardShortcutsModal open={showShortcuts} onClose={() => setShowShortcuts(false)} />
     </motion.div>
   );
 }

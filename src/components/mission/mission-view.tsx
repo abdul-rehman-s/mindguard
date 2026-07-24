@@ -16,6 +16,11 @@ import {
   ChevronDown,
   Flame,
   Sparkles,
+  Zap,
+  BookOpen,
+  Code,
+  Rocket,
+  Lightbulb,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -66,6 +71,14 @@ const priorityConfig: Record<MissionPriority, { label: string; class: string }> 
   medium: { label: 'Medium', class: 'bg-amber-500/10 text-amber-400 border-amber-500/20' },
   low: { label: 'Low', class: 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20' },
 };
+
+const missionTemplates = [
+  { title: 'Deep Work Sprint', description: '90 minutes of uninterrupted deep focus on a single task.', priority: 'high' as MissionPriority, icon: Zap },
+  { title: 'Study Session', description: 'Focused study or learning with active recall.', priority: 'medium' as MissionPriority, icon: BookOpen },
+  { title: 'Code Review', description: 'Review and improve existing codebase quality.', priority: 'medium' as MissionPriority, icon: Code },
+  { title: 'Creative Brainstorm', description: 'Free-form creative thinking and idea generation.', priority: 'low' as MissionPriority, icon: Lightbulb },
+  { title: 'Project Launch', description: 'Push forward the most critical launch tasks.', priority: 'high' as MissionPriority, icon: Rocket },
+];
 
 function formatDuration(seconds: number): string {
   const h = Math.floor(seconds / 3600);
@@ -327,6 +340,41 @@ export function MissionView() {
           </CardContent>
         </Card>
       </motion.div>
+
+      {/* Mission Templates */}
+      {!hasActiveMission && (
+        <motion.div variants={item} className="mb-8">
+          <div className="mb-3 flex items-center gap-2">
+            <Sparkles className="h-3.5 w-3.5 text-zinc-500" />
+            <h3 className="text-xs font-medium uppercase tracking-wider text-zinc-500">Quick Start Templates</h3>
+          </div>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {missionTemplates.map((template) => {
+              const Icon = template.icon;
+              return (
+                <motion.button
+                  key={template.title}
+                  whileHover={{ y: -1, transition: { duration: 0.15 } }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => handleCreate({ title: template.title, description: template.description, priority: template.priority })}
+                  className="card-glow group flex items-start gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 text-left transition-colors hover:border-emerald-500/15"
+                >
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-500/[0.08] transition-colors group-hover:bg-emerald-500/15">
+                    <Icon className="h-4 w-4 text-emerald-400/70 group-hover:text-emerald-400" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-zinc-200 group-hover:text-zinc-100">{template.title}</p>
+                    <p className="mt-0.5 text-[11px] leading-relaxed text-zinc-500 line-clamp-2">{template.description}</p>
+                    <Badge variant="outline" className={cn('mt-2 text-[10px]', priorityConfig[template.priority].class)}>
+                      {priorityConfig[template.priority].label}
+                    </Badge>
+                  </div>
+                </motion.button>
+              );
+            })}
+          </div>
+        </motion.div>
+      )}
 
       {/* Create Button + Warning */}
       <motion.div variants={item} className="mb-6 flex items-center justify-between">
