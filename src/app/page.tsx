@@ -1,31 +1,80 @@
-'use client'
+'use client';
 
-export default function Home() {
-  return (
-    <div style={{
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      minHeight: '100vh',
-      gap: '2rem',
-      padding: '1rem'
-    }}>
-      <div style={{
-        position: 'relative',
-        width: '6rem',
-        height: '6rem'
-      }}>
-        <img
-          src="/logo.svg"
-          alt="Z.ai Logo"
-          style={{
-            width: '100%',
-            height: '100%',
-            objectFit: 'contain'
-          }}
-        />
+import { useEffect } from 'react';
+import { useSession } from 'next-auth/react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useAppStore } from '@/stores/app-store';
+import { LandingPage } from '@/components/landing/landing-page';
+import { AppShell } from '@/components/app/app-shell';
+import { DashboardView } from '@/components/dashboard/dashboard-view';
+import { MissionView } from '@/components/mission/mission-view';
+import { TimerView } from '@/components/timer/timer-view';
+import { ReflectionView } from '@/components/reflection/reflection-view';
+import { StatsView } from '@/components/stats/stats-view';
+import { SettingsView } from '@/components/settings/settings-view';
+import { Loader2 } from 'lucide-react';
+import { useMounted } from '@/hooks/use-mounted';
+
+export default function HomePage() {
+  const mounted = useMounted();
+  const { data: session, status } = useSession();
+  const { currentView, setUser, setView, setLoading } = useAppStore();
+
+  useEffect(() => {
+    if (status === 'authenticated' && session?.user) {
+      const user = session.user as Record<string, unknown>;
+      setUser({
+        id: (user.id as string) || '',
+        email: (user.email as string) || '',
+        name: (user.name as string) || null,
+      });
+      if (currentView === 'landing') {
+        setView('dashboard');
+      }
+    } else if (status === 'unauthenticated') {
+      setUser(null);
+      setView('landing');
+    }
+    setLoading(false);
+  }, [status, session, setUser, setView, currentView, setLoading]);
+
+  if (!mounted || status === 'loading') {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-zinc-950">
+        <div className="flex flex-col items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/10">
+            <svg className="h-5 w-5 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+            </svg>
+          </div>
+          <Loader2 className="h-5 w-5 animate-spin text-zinc-500" />
+        </div>
       </div>
-    </div>
-  )
+    );
+  }
+
+  if (currentView === 'landing' || status === 'unauthenticated') {
+    return <LandingPage />;
+  }
+
+  return (
+    <AppShell>
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={currentView}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -8 }}
+          transition={{ duration: 0.2 }}
+        >
+          {currentView === 'dashboard' && <DashboardView />}
+          {currentView === 'mission' && <MissionView />}
+          {currentView === 'timer' && <TimerView />}
+          {currentView === 'reflection' && <ReflectionView />}
+          {currentView === 'stats' && <StatsView />}
+          {currentView === 'settings' && <SettingsView />}
+        </motion.div>
+      </AnimatePresence>
+    </AppShell>
+  );
 }
