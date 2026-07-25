@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
+import { playClick } from '@/lib/sounds';
 import type { AppView } from '@/types';
 
 const navItems: { view: AppView; icon: typeof LayoutDashboard; label: string; shortcut: string }[] = [
@@ -35,6 +36,7 @@ export function AppSidebar() {
   const { data: session } = useSession();
 
   const handleNavClick = (view: AppView) => {
+    playClick();
     setView(view);
     if (window.innerWidth < 1024) {
       setSidebarOpen(false);
@@ -61,9 +63,12 @@ export function AppSidebar() {
           x: sidebarOpen ? 0 : -280,
         }}
         transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-        className="fixed left-0 top-0 z-50 flex h-screen w-[240px] flex-col border-r border-white/[0.06] bg-zinc-950/95 backdrop-blur-xl lg:translate-x-0 lg:z-30"
+        className="glass-sidebar fixed left-0 top-0 z-50 flex h-screen w-[240px] flex-col border-r border-white/[0.06] bg-zinc-950/95 backdrop-blur-xl lg:translate-x-0 lg:z-30"
         style={{ willChange: 'transform' }}
       >
+        {/* Emerald glow accent */}
+        <div className="pointer-events-none absolute top-0 left-0 right-0 h-32 bg-gradient-to-b from-emerald-500/[0.06] to-transparent" />
+
         {/* Header */}
         <div className="flex h-14 items-center justify-between px-4">
           <div className="flex items-center gap-2.5">
@@ -98,10 +103,10 @@ export function AppSidebar() {
                   whileTap={{ scale: 0.98 }}
                   onClick={() => handleNavClick(item.view)}
                   className={cn(
-                    'group relative flex items-center gap-3 rounded-lg px-3 py-[9px] text-[13px] font-medium transition-all duration-150',
+                    'group relative flex items-center gap-3 rounded-lg px-3 py-[9px] text-[13px] font-medium transition-all duration-200',
                     isActive
                       ? 'bg-white/[0.06] text-zinc-100'
-                      : 'text-zinc-400 hover:bg-white/[0.04] hover:text-zinc-200'
+                      : 'text-zinc-400 hover:bg-white/[0.04] hover:text-zinc-200 hover:scale-[1.01]'
                   )}
                 >
                   {isActive && (

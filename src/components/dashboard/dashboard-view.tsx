@@ -26,6 +26,9 @@ import { useAppStore } from '@/stores/app-store';
 import { cn } from '@/lib/utils';
 import type { DashboardStats } from '@/types';
 
+import { StaggerContainer, StaggerItem } from '@/components/premium/stagger';
+import { playClick } from '@/lib/sounds';
+
 import { Heatmap } from './heatmap';
 import { Achievements } from './achievements';
 import { Timeline } from './timeline';
@@ -109,7 +112,7 @@ function StatCard({ icon: Icon, label, value, sub, progressVal, delay = 0 }: {
   const isNumber = typeof value === 'number';
   return (
     <motion.div whileHover={{ y: -2, transition: { duration: 0.2 } }}>
-      <Card className="card-glow border-white/[0.06] bg-white/[0.02]">
+      <Card className="card-glow glass-card glass-glow-edge border-white/[0.06] bg-white/[0.02]">
         <CardContent className="p-5">
           <div className="mb-3 flex items-center justify-between">
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-500/[0.08]">
@@ -201,15 +204,15 @@ export function DashboardView() {
   const { greeting, Icon: GreetingIcon, gradient, iconColor } = getGreetingConfig(hour);
 
   return (
-    <motion.div variants={container} initial="hidden" animate="visible" className="app-grid-bg min-h-full -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+    <StaggerContainer className="app-grid-bg min-h-full -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
       {/* Greeting */}
-      <motion.div variants={item} className="mb-10 pt-2">
+      <StaggerItem className="mb-10 pt-2">
         <div className="flex items-center gap-3.5">
           <div className={cn('flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br', gradient)}>
             <GreetingIcon className={cn('h-5 w-5', iconColor)} />
           </div>
           <div>
-            <h2 className="text-[1.65rem] font-semibold tracking-[-0.02em] text-zinc-100">
+            <h2 className="heading-lg text-[1.65rem] font-semibold tracking-[-0.02em] text-zinc-100">
               Good {greeting}
             </h2>
             <p className="mt-0.5 text-sm leading-relaxed text-zinc-500">
@@ -219,10 +222,10 @@ export function DashboardView() {
             </p>
           </div>
         </div>
-      </motion.div>
+      </StaggerItem>
 
       {/* Quick Start CTA */}
-      <motion.div variants={item} className="mb-10">
+      <StaggerItem className="mb-10">
         <Button
           onClick={() => setView('timer')}
           className="btn-glow group h-11 w-full bg-gradient-to-b from-emerald-500 to-emerald-600 text-white shadow-lg shadow-emerald-500/20 hover:from-emerald-400 hover:to-emerald-500 hover:shadow-emerald-500/30 sm:w-auto"
@@ -232,20 +235,20 @@ export function DashboardView() {
           Start Focus Session
           <ArrowUpRight className="ml-1.5 h-3.5 w-3.5 opacity-0 transition-all duration-200 group-hover:opacity-60 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
         </Button>
-      </motion.div>
+      </StaggerItem>
 
       {/* Stats Grid - 6 cards */}
-      <motion.div variants={item} className="mb-10 grid grid-cols-2 gap-3 lg:grid-cols-3">
+      <StaggerItem className="mb-10 grid grid-cols-2 gap-3 lg:grid-cols-3">
         <StatCard icon={Clock} label="Today's Focus" value={s?.todayFocusMinutes || 0} sub={`${s?.todaySessions || 0} sessions`} />
         <StatCard icon={Timer} label="Weekly Focus" value={s?.weeklyFocusMinutes || 0} sub="this week" />
         <StatCard icon={TrendingUp} label="Total Focus" value={s?.totalFocusMinutes || 0} sub="all time" />
         <StatCard icon={Activity} label="Avg Session" value={s?.avgSessionMinutes || 0} sub="per session" />
         <StatCard icon={Flame} label="Current Streak" value={s?.currentStreak || 0} sub="consecutive days" />
         <StatCard icon={Zap} label="Focus Score" value={s?.focusScore || 0} sub="/ 100" progressVal={s?.focusScore || 0} />
-      </motion.div>
+      </StaggerItem>
 
       {/* Bottom section */}
-      <div className="grid gap-4 lg:grid-cols-2">
+      <StaggerItem className="grid gap-4 lg:grid-cols-2">
         {/* Active Mission */}
         <motion.div variants={item}>
           <div className="mb-3 flex items-center gap-2">
@@ -253,7 +256,7 @@ export function DashboardView() {
             <h3 className="text-xs font-medium uppercase tracking-wider text-zinc-500">Current Mission</h3>
           </div>
           {activeMission ? (
-            <Card className="card-glow border-white/[0.06] bg-white/[0.02] overflow-hidden">
+            <Card className="card-glow glass-card glass-glow-edge border-white/[0.06] bg-white/[0.02] overflow-hidden">
               <div className="absolute left-0 top-0 h-full w-[2px] bg-gradient-to-b from-emerald-400/60 to-emerald-500/20" />
               <CardContent className="p-5">
                 <div className="flex items-start justify-between gap-3">
@@ -298,7 +301,7 @@ export function DashboardView() {
               </CardContent>
             </Card>
           ) : (
-            <Card className="card-glow border-dashed border-white/[0.06] bg-white/[0.01]">
+            <Card className="card-glow glass-card glass-glow-edge border-dashed border-white/[0.06] bg-white/[0.01]">
               <CardContent className="flex flex-col items-center justify-center py-12">
                 <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-white/[0.03]">
                   <Target className="h-6 w-6 text-zinc-700" />
@@ -319,7 +322,7 @@ export function DashboardView() {
             <Clock className="h-3.5 w-3.5 text-zinc-500" />
             <h3 className="text-xs font-medium uppercase tracking-wider text-zinc-500">Recent Sessions</h3>
           </div>
-          <Card className="card-glow border-white/[0.06] bg-white/[0.02]">
+          <Card className="card-glow glass-card glass-glow-edge border-white/[0.06] bg-white/[0.02]">
             <CardContent className="p-0">
               {recentSessions && recentSessions.length > 0 ? (
                 <div className="divide-y divide-white/[0.04]">
@@ -354,17 +357,17 @@ export function DashboardView() {
             </CardContent>
           </Card>
         </motion.div>
-      </div>
+      </StaggerItem>
 
       {/* New widgets row */}
-      <motion.div variants={item} className="mt-4 grid gap-4 lg:grid-cols-3">
+      <StaggerItem className="mt-4 grid gap-4 lg:grid-cols-3">
         <Timeline />
         <AttentionScore />
         <div className="space-y-4">
           <Heatmap />
           <Achievements />
         </div>
-      </motion.div>
-    </motion.div>
+      </StaggerItem>
+    </StaggerContainer>
   );
 }

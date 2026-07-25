@@ -232,9 +232,19 @@ export function FocusMode({ duration: initialDuration, missionTitle, onExit }: F
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
       className="fixed inset-0 z-[200] flex flex-col items-center justify-center bg-zinc-950 overflow-hidden"
     >
-      {/* Background gradient */}
+      {/* Breathing background — CSS radial gradient animation */}
+      <div className="pointer-events-none absolute inset-0 focus-breathe-bg" />
+
+      {/* Background gradient — animated scale pulse */}
       <div className="pointer-events-none absolute inset-0">
-        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-[600px] w-[600px] rounded-full bg-emerald-500/[0.06] blur-[150px]" />
+        <motion.div
+          className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-[600px] w-[600px] rounded-full bg-emerald-500/[0.06] blur-[150px]"
+          animate={{
+            scale: [1, 1.08, 1],
+            opacity: [0.6, 1, 0.6],
+          }}
+          transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+        />
       </div>
 
       {/* Particles */}
@@ -253,11 +263,14 @@ export function FocusMode({ duration: initialDuration, missionTitle, onExit }: F
         ))}
       </div>
 
-      {/* Breathing glow */}
+      {/* Pulsing glow — intensity synced with timer progress */}
       <motion.div
         className="pointer-events-none absolute h-80 w-80 rounded-full bg-emerald-500/[0.08] blur-[100px]"
-        animate={{ scale: [1, 1.15, 1], opacity: [0.3, 0.6, 0.3] }}
-        transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+        animate={{
+          scale: [1, 1.15, 1],
+          opacity: [0.2 + progress * 0.003, 0.4 + progress * 0.005, 0.2 + progress * 0.003],
+        }}
+        transition={{ duration: Math.max(2, 4 - (progress / 100) * 2), repeat: Infinity, ease: 'easeInOut' }}
       />
 
       {/* Mission title */}

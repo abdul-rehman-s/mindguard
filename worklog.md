@@ -68,3 +68,40 @@ Stage Summary:
 - All dead tick-based timer code removed from TimerView
 - User's selected duration now properly flows: TimerView → zustand store → page.tsx → FocusMode
 - Lint passes clean, server compiles HTTP 200
+
+---
+Task ID: 3
+Agent: Main Agent
+Task: Premium UI upgrade — $20/month feel
+
+Work Log:
+- Generated tiny WAV click sound (1164 bytes) with Web Audio API playback utility (throttled, very low volume like Notion)
+- Created CursorGlow component: spring-physics cursor with 16px dot + 32px emerald glow, glow follows with extra lag via rAF, scales on click, expands on interactive elements, auto-hides on touch devices
+- Created PremiumButton wrapper with whileHover scale+lift and whileTap scale:0.97 + sound
+- Created StaggerContainer/StaggerItem for dashboard widget entrance animations
+- Added comprehensive CSS system to globals.css:
+  - .glass-card, .glass-sidebar, .glass-header, .glass-panel (backdrop-blur + soft borders + multi-layer shadows)
+  - .glass-glow-edge (gradient border glow on hover using mask-composite)
+  - .btn-premium (hover glow + active scale:0.97)
+  - .lift-hover (hover translateY:-2px + elevated shadow)
+  - .heading-xl/lg/md, .body-lg/md (typography hierarchy)
+  - .focus-breathe-bg (radial gradient breathing animation for focus mode)
+  - ::selection with emerald tint
+- Updated page.tsx transitions: added blur effect on enter/exit, eased with cubic-bezier
+- Updated app-shell.tsx: added CursorGlow, widened content to max-w-6xl, increased padding
+- Updated app-sidebar.tsx: glass-sidebar class, emerald gradient glow at top, hover:scale-[1.01] on nav items, playClick() on navigation
+- Updated app-header.tsx: deeper backdrop-blur, top shine line, emerald hover glow, dual-layer shadow
+- Updated dashboard-view.tsx: StaggerContainer/StaggerItem wrappers, glass-card+glass-glow-edge on all stat cards, heading-lg on main heading
+- Updated focus-mode.tsx: breathing CSS background animation, pulsing glow synced with timer progress (intensity and speed increase as timer progresses)
+
+Stage Summary:
+- Custom cursor with spring physics and emerald glow (desktop only, auto-hides on touch)
+- Subtle click sounds on sidebar navigation (Web Audio API, 8% volume, throttled)
+- Page transitions with fade+slide+blur effect (0.25s cubic-bezier)
+- Dashboard widgets stagger in with 60ms delay between each
+- Focus mode has dual-layer breathing: CSS radial gradient + Framer Motion pulsing glow that intensifies with progress
+- Glassmorphism on all cards (backdrop-blur:24px, gradient glow edges on hover)
+- Glass sidebar and header with top shine lines
+- Typography hierarchy with custom heading/body utility classes
+- Selection color is emerald-tinted
+- Lint passes clean, server compiles and serves HTTP 200

@@ -59,7 +59,10 @@ export function AppHeader() {
 
   return (
     <>
-      <header className="sticky top-0 z-20 flex h-14 items-center justify-between border-b border-zinc-800/50 bg-zinc-950/80 px-4 backdrop-blur-xl lg:px-6">
+      <header className="group/header relative sticky top-0 z-20 flex h-14 items-center justify-between border-b border-white/[0.06] bg-zinc-950/50 px-4 shadow-[0_1px_0_0_rgba(255,255,255,0.03),0_8px_32px_-8px_rgba(0,0,0,0.5)] backdrop-blur-2xl backdrop-saturate-[1.8] lg:px-6">
+        {/* Glassmorphism top shine */}
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/[0.08] to-transparent" />
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-transparent via-emerald-400/[0.12] to-transparent opacity-0 transition-opacity duration-500 group-hover/header:opacity-100" />
         <div className="flex items-center gap-3">
           <Button
             variant="ghost"
