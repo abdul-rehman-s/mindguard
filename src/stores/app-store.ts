@@ -87,4 +87,13 @@ export const useAppStore = create<AppState>((set) => ({
 
   lastSessionResult: null,
   setLastSessionResult: (lastSessionResult) => set({ lastSessionResult }),
+
+  // Expose for dev/debug
+  _setState: set,
+  _getState: () => get(),
 }));
+
+// Expose globally for debugging
+if (typeof window !== 'undefined') {
+  (window as unknown as Record<string, unknown>).__appStore = useAppStore;
+}

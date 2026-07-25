@@ -3,19 +3,11 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
-import { Pause, Play, Square, Volume2, VolumeX, CloudRain, TreePine, Coffee, Waves, Sailboat } from 'lucide-react';
+import { Pause, Play, Square } from 'lucide-react';
 import { useAppStore } from '@/stores/app-store';
 import { cn } from '@/lib/utils';
 import { CelebrationScreen } from './celebration-screen';
-
-const AMBIENT_SOUNDS = [
-  { id: 'none', label: 'None', icon: VolumeX },
-  { id: 'rain', label: 'Rain', icon: CloudRain },
-  { id: 'forest', label: 'Forest', icon: TreePine },
-  { id: 'cafe', label: 'Cafe', icon: Coffee },
-  { id: 'brown', label: 'Brown Noise', icon: Waves },
-  { id: 'ocean', label: 'Ocean', icon: Sailboat },
-] as const;
+import { AudioPlayer } from './audio-player';
 
 const particles = Array.from({ length: 40 }, (_, i) => ({
   id: i,
@@ -47,8 +39,6 @@ export function FocusMode({ duration: initialDuration, missionTitle, onExit }: F
   const [isPaused, setIsPaused] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
   const [celebrationData, setCelebrationData] = useState<{ duration: number; mission: string | null }>({ duration: 0, mission: null });
-  const [showSounds, setShowSounds] = useState(false);
-  const [selectedSound, setSelectedSound] = useState('none');
   const [saving, setSaving] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startTimeRef = useRef('');
@@ -218,7 +208,7 @@ export function FocusMode({ duration: initialDuration, missionTitle, onExit }: F
           onClick={() => setIsPaused(!isPaused)}
           className="flex h-14 w-14 items-center justify-center rounded-2xl border border-white/[0.08] bg-white/[0.04] text-zinc-300 transition-colors hover:bg-white/[0.06]"
         >
-          {isPaused ? <Play className={cn('h-5 w-5 text-amber-400')} /> : <Pause className={cn('h-5 w-5')} />}
+          {isPaused ? <Play className="h-5 w-5 text-amber-400" /> : <Pause className="h-5 w-5" />}
         </motion.button>
         <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
           onClick={handleStop} disabled={saving}
@@ -228,39 +218,8 @@ export function FocusMode({ duration: initialDuration, missionTitle, onExit }: F
         </motion.button>
       </div>
 
-      {/* Sound selector */}
-      <div className="absolute bottom-8 left-0 right-0 flex justify-center">
-        <motion.button
-          whileTap={{ scale: 0.95 }}
-          onClick={() => setShowSounds(!showSounds)}
-          className="flex items-center gap-2 rounded-full border border-white/[0.06] bg-white/[0.03] px-4 py-2 text-xs text-zinc-500 transition-colors hover:bg-white/[0.05] hover:text-zinc-300"
-        >
-          {selectedSound === 'none' ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5 text-emerald-400" />}
-          {selectedSound === 'none' ? 'Ambient Sound' : AMBIENT_SOUNDS.find(s => s.id === selectedSound)?.label}
-        </motion.button>
-        <AnimatePresence>
-          {showSounds && (
-            <motion.div
-              initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }}
-              className="absolute bottom-12 flex gap-2 rounded-xl border border-white/[0.08] bg-zinc-900/95 p-2 backdrop-blur-xl"
-            >
-              {AMBIENT_SOUNDS.map((sound) => {
-                const Icon = sound.id === 'none' ? VolumeX : sound.id === 'rain' ? CloudRain : sound.id === 'forest' ? TreePine : sound.id === 'cafe' ? Coffee : sound.id === 'brown' ? Waves : Sailboat;
-                return (
-                  <button key={sound.id} onClick={() => { setSelectedSound(sound.id); setShowSounds(false); }}
-                    className={cn(
-                      'flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition-colors',
-                      selectedSound === sound.id ? 'bg-emerald-500/10 text-emerald-300' : 'text-zinc-400 hover:bg-white/[0.06] hover:text-zinc-200'
-                    )}
-                  >
-                    <Icon className="h-3.5 w-3.5" /> {sound.label}
-                  </button>
-                );
-              })}
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+      {/* Audio Player */}
+      <AudioPlayer />
 
       {/* ESC hint */}
       <div className="absolute bottom-8 right-8">
