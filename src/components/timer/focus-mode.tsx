@@ -5,7 +5,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { Pause, Play, Square } from 'lucide-react';
 import { useAppStore } from '@/stores/app-store';
-import { cn } from '@/lib/utils';
 import { CelebrationScreen } from './celebration-screen';
 import { AudioPlayer } from './audio-player';
 
@@ -20,9 +19,10 @@ const particles = Array.from({ length: 40 }, (_, i) => ({
 }));
 
 function formatTime(totalSeconds: number): string {
-  const h = Math.floor(totalSeconds / 3600);
-  const m = Math.floor((totalSeconds % 3600) / 60);
-  const s = totalSeconds % 60;
+  const clamped = Math.max(0, Math.floor(totalSeconds));
+  const h = Math.floor(clamped / 3600);
+  const m = Math.floor((clamped % 3600) / 60);
+  const s = clamped % 60;
   if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
@@ -35,85 +35,170 @@ interface FocusModeProps {
 
 export function FocusMode({ duration: initialDuration, missionTitle, onExit }: FocusModeProps) {
   const { setFocusMode, setLastSessionResult } = useAppStore();
-  const [elapsed, setElapsed] = useState(0);
+
+  // ── Display state (drives UI only) ──
+  const [tick, setTick] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
   const [celebrationData, setCelebrationData] = useState<{ duration: number; mission: string | null }>({ duration: 0, mission: null });
   const [saving, setSaving] = useState(false);
+
+  // ── Wall-clock timing refs (source of truth) ──
+  const sessionStartedAtRef = useRef<number>(0);   // Date.now() when session first started
+  const pausedAtRef = useRef<number>(0);            // Date.now() when last paused
+  const totalPausedMsRef = useRef<number>(0);       // accumulated ms spent paused
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const startTimeRef = useRef('');
-  const elapsedRef = useRef(0);
-  const durationRef = useRef(initialDuration);
+  const completedRef = useRef(false);
   const onExitRef = useRef(onExit);
   const missionTitleRef = useRef(missionTitle);
+  const durationRef = useRef(initialDuration);
 
   onExitRef.current = onExit;
   missionTitleRef.current = missionTitle;
   durationRef.current = initialDuration;
 
-  // Timer tick
-  useEffect(() => {
-    if (!startTimeRef.current) startTimeRef.current = new Date().toISOString();
+  // ── Calculate real elapsed seconds from wall clock ──
+  const getElapsedSeconds = useCallback(() => {
+    if (sessionStartedAtRef.current === 0) return 0;
+    if (isPaused) {
+      // While paused, freeze at the moment we paused
+      return Math.floor((pausedAtRef.current - sessionStartedAtRef.current - totalPausedMsRef.current) / 1000);
+    }
+    return Math.floor((Date.now() - sessionStartedAtRef.current - totalPausedMsRef.current) / 1000);
+  }, [isPaused]);
+
+  const elapsedSeconds = getElapsedSeconds();
+  const remaining = Math.max(durationRef.current - elapsedSeconds, 0);
+  const progress = durationRef.current > 0 ? Math.min((elapsedSeconds / durationRef.current) * 100, 100) : 0;
+
+  // ── Start / resume interval ──
+  const startInterval = useCallback(() => {
+    // Always clear first to prevent duplicates
+    if (intervalRef.current !== null) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+    console.log('[FocusTimer] ▶ Timer interval started');
     intervalRef.current = setInterval(() => {
-      setElapsed((prev) => {
-        if (prev >= initialDuration) return prev;
-        return prev + 1;
-      });
-    }, 1000);
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
-  }, [initialDuration]);
+      setTick((t) => t + 1);
+    }, 200); // 200ms for smooth display, elapsed calculated from Date.now()
+  }, []);
 
-  // Sync ref
-  useEffect(() => { elapsedRef.current = elapsed; }, [elapsed]);
+  // ── Stop interval ──
+  const stopInterval = useCallback(() => {
+    if (intervalRef.current !== null) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+      console.log('[FocusTimer] ⏹ Timer interval cleared');
+    }
+  }, []);
 
-  const saveAndFinish = useCallback(async (showCeleb: boolean) => {
-    if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
-    const currentElapsed = elapsedRef.current;
-    if (currentElapsed < 5) { onExitRef.current(); return; }
+  // ── Boot: start session on mount ──
+  useEffect(() => {
+    sessionStartedAtRef.current = Date.now();
+    totalPausedMsRef.current = 0;
+    pausedAtRef.current = 0;
+    completedRef.current = false;
+    console.log('[FocusTimer] 🚀 Session started at', new Date(sessionStartedAtRef.current).toISOString());
+    startInterval();
+    return () => {
+      stopInterval();
+      console.log('[FocusTimer] 🔧 Unmount cleanup');
+    };
+  }, [startInterval, stopInterval]);
+
+  // ── Auto-complete when time runs out ──
+  useEffect(() => {
+    if (remaining <= 0 && sessionStartedAtRef.current > 0 && !completedRef.current && elapsedSeconds >= 5) {
+      completedRef.current = true;
+      stopInterval();
+      const finalElapsed = getElapsedSeconds();
+      console.log('[FocusTimer] ✅ Timer completed! Elapsed:', finalElapsed, 'seconds');
+      saveAndFinishRef.current(true, finalElapsed);
+    }
+  });
+
+  // ── Pause / Resume handler ──
+  const handleTogglePause = useCallback(() => {
+    if (isPaused) {
+      // ── Resume ──
+      const pauseDuration = Date.now() - pausedAtRef.current;
+      totalPausedMsRef.current += pauseDuration;
+      console.log('[FocusTimer] ▶ Resumed after', Math.round(pauseDuration / 1000), 's pause. Total paused:', Math.round(totalPausedMsRef.current / 1000), 's');
+      setIsPaused(false);
+      startInterval();
+    } else {
+      // ── Pause ──
+      pausedAtRef.current = Date.now();
+      console.log('[FocusTimer] ⏸ Paused at elapsed:', getElapsedSeconds(), 's');
+      setIsPaused(true);
+      stopInterval();
+    }
+  }, [isPaused, getElapsedSeconds, startInterval, stopInterval]);
+
+  // ── Save session (defined before effects that use it) ──
+  const saveAndFinishRef = useRef<(showCeleb: boolean, forcedElapsed?: number) => Promise<void>>(
+    async () => {}
+  );
+
+  const saveAndFinish = useCallback(async (showCeleb: boolean, forcedElapsed?: number) => {
+    stopInterval();
+    const realElapsed = forcedElapsed ?? getElapsedSeconds();
+    console.log('[FocusTimer] 💾 Saving session. Real elapsed:', realElapsed, 's (', formatTime(realElapsed), ')');
+
+    if (realElapsed < 5) {
+      console.log('[FocusTimer] ⚠️ Session too short (<5s), discarding');
+      onExitRef.current();
+      return;
+    }
+
     setSaving(true);
     try {
-      const now = new Date();
-      const start = startTimeRef.current ? new Date(startTimeRef.current) : new Date(now.getTime() - currentElapsed * 1000);
+      const endedAt = new Date();
+      const startedAt = new Date(sessionStartedAtRef.current);
       const { activeMission } = useAppStore.getState();
+
       const res = await fetch('/api/sessions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           missionId: activeMission?.id || null,
-          duration: currentElapsed,
-          startedAt: start.toISOString(),
-          endedAt: now.toISOString(),
+          duration: realElapsed,
+          startedAt: startedAt.toISOString(),
+          endedAt: endedAt.toISOString(),
         }),
       });
-      if (!res.ok) throw new Error();
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
       const title = missionTitleRef.current || activeMission?.title || null;
       if (showCeleb) {
-        setCelebrationData({ duration: currentElapsed, mission: title });
-        setLastSessionResult({ duration: currentElapsed, missionTitle: title });
+        setCelebrationData({ duration: realElapsed, mission: title });
+        setLastSessionResult({ duration: realElapsed, missionTitle: title });
         setShowCelebration(true);
       } else {
-        toast.success(`Session saved — ${formatTime(currentElapsed)}`);
+        toast.success(`Session saved — ${formatTime(realElapsed)}`);
         onExitRef.current();
       }
-    } catch {
+      console.log('[FocusTimer] ✅ Session saved successfully:', realElapsed, 's');
+    } catch (err) {
+      console.error('[FocusTimer] ❌ Save failed:', err);
       toast.error('Failed to save session');
       onExitRef.current();
     } finally {
       setSaving(false);
     }
-  }, [setLastSessionResult]);
+  }, [getElapsedSeconds, setLastSessionResult, stopInterval]);
 
-  // Auto-complete when time is up
-  const completedRef = useRef(false);
-  useEffect(() => {
-    if (elapsed >= initialDuration && elapsed >= 5 && !completedRef.current) {
-      completedRef.current = true;
-      saveAndFinish(true);
-    }
-  }, [elapsed, initialDuration, saveAndFinish]);
+  // Keep ref in sync so the auto-complete effect can call the latest version
+  saveAndFinishRef.current = saveAndFinish;
 
-  const handleStop = useCallback(() => { saveAndFinish(false); }, [saveAndFinish]);
+  // ── Stop handler ──
+  const handleStop = useCallback(() => {
+    console.log('[FocusTimer] ⏹ Stop requested. Real elapsed:', getElapsedSeconds(), 's');
+    saveAndFinish(false);
+  }, [getElapsedSeconds, saveAndFinish]);
 
+  // ── Keyboard: ESC to stop ──
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') { e.preventDefault(); handleStop(); }
@@ -122,13 +207,18 @@ export function FocusMode({ duration: initialDuration, missionTitle, onExit }: F
     return () => window.removeEventListener('keydown', handleKey);
   }, [handleStop]);
 
-  const progress = initialDuration > 0 ? (elapsed / initialDuration) * 100 : 0;
-  const remaining = Math.max(initialDuration - elapsed, 0);
-  const circumference = 2 * Math.PI * 120;
-
+  // ── Celebration screen ──
   if (showCelebration) {
-    return <CelebrationScreen duration={celebrationData.duration} missionTitle={celebrationData.mission} onExit={() => { setShowCelebration(false); setFocusMode('idle'); }} />;
+    return (
+      <CelebrationScreen
+        duration={celebrationData.duration}
+        missionTitle={celebrationData.mission}
+        onExit={() => { setShowCelebration(false); setFocusMode('idle'); }}
+      />
+    );
   }
+
+  const circumference = 2 * Math.PI * 120;
 
   return (
     <motion.div
@@ -204,15 +294,22 @@ export function FocusMode({ duration: initialDuration, missionTitle, onExit }: F
 
       {/* Controls */}
       <div className="flex items-center gap-4">
-        <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-          onClick={() => setIsPaused(!isPaused)}
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={handleTogglePause}
           className="flex h-14 w-14 items-center justify-center rounded-2xl border border-white/[0.08] bg-white/[0.04] text-zinc-300 transition-colors hover:bg-white/[0.06]"
+          aria-label={isPaused ? 'Resume timer' : 'Pause timer'}
         >
           {isPaused ? <Play className="h-5 w-5 text-amber-400" /> : <Pause className="h-5 w-5" />}
         </motion.button>
-        <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-          onClick={handleStop} disabled={saving}
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={handleStop}
+          disabled={saving}
           className="flex h-14 w-14 items-center justify-center rounded-2xl border border-white/[0.06] bg-white/[0.02] text-zinc-500 transition-colors hover:border-red-500/30 hover:bg-red-500/[0.06] hover:text-red-400"
+          aria-label="Stop session"
         >
           <Square className="h-4 w-4" />
         </motion.button>
@@ -223,10 +320,17 @@ export function FocusMode({ duration: initialDuration, missionTitle, onExit }: F
 
       {/* ESC hint */}
       <div className="absolute bottom-8 right-8">
-        <span className="text-[10px] text-zinc-700"><kbd className="rounded border border-white/[0.06] bg-white/[0.03] px-1.5 py-0.5 text-[9px]">ESC</kbd> to exit</span>
+        <span className="text-[10px] text-zinc-700">
+          <kbd className="rounded border border-white/[0.06] bg-white/[0.03] px-1.5 py-0.5 text-[9px]">ESC</kbd> to exit
+        </span>
       </div>
 
-      {saving && <div className="absolute top-8 right-8 flex items-center gap-2 text-xs text-zinc-400"><span className="h-3 w-3 animate-spin rounded-full border-2 border-emerald-500 border-t-transparent" /> Saving...</div>}
+      {saving && (
+        <div className="absolute top-8 right-8 flex items-center gap-2 text-xs text-zinc-400">
+          <span className="h-3 w-3 animate-spin rounded-full border-2 border-emerald-500 border-t-transparent" />
+          Saving...
+        </div>
+      )}
     </motion.div>
   );
 }
