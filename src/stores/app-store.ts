@@ -47,6 +47,9 @@ interface AppState {
 
   lastSessionResult: { duration: number; missionTitle: string | null } | null;
   setLastSessionResult: (r: { duration: number; missionTitle: string | null } | null) => void;
+
+  focusDuration: number;
+  setFocusDuration: (d: number) => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -87,6 +90,9 @@ export const useAppStore = create<AppState>((set) => ({
 
   lastSessionResult: null,
   setLastSessionResult: (lastSessionResult) => set({ lastSessionResult }),
+
+  focusDuration: 1500,
+  setFocusDuration: (focusDuration) => set({ focusDuration }),
 
 }));
 

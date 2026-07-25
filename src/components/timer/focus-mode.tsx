@@ -144,7 +144,14 @@ export function FocusMode({ duration: initialDuration, missionTitle, onExit }: F
   const saveAndFinish = useCallback(async (showCeleb: boolean, forcedElapsed?: number) => {
     stopInterval();
     const realElapsed = forcedElapsed ?? getElapsedSeconds();
-    console.log('[FocusTimer] 💾 Saving session. Real elapsed:', realElapsed, 's (', formatTime(realElapsed), ')');
+    const endNow = Date.now();
+    const computedDuration = Math.floor((endNow - sessionStartedAtRef.current - totalPausedMsRef.current) / 1000);
+    console.log('[FocusTimer] 💾 Saving session.');
+    console.log('[FocusTimer]   startTime =', sessionStartedAtRef.current, '→', new Date(sessionStartedAtRef.current).toISOString());
+    console.log('[FocusTimer]   endTime   =', endNow, '→', new Date(endNow).toISOString());
+    console.log('[FocusTimer]   pausedMs  =', totalPausedMsRef.current, 'ms');
+    console.log('[FocusTimer]   computed  = Math.floor((Date.now() - startTime - pausedMs) / 1000) =', computedDuration, 's');
+    console.log('[FocusTimer]   sending   duration:', realElapsed, 's (', formatTime(realElapsed), ')');
 
     if (realElapsed < 5) {
       console.log('[FocusTimer] ⚠️ Session too short (<5s), discarding');

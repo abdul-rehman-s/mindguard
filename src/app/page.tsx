@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore } from '@/stores/app-store';
@@ -21,14 +21,14 @@ import { useMounted } from '@/hooks/use-mounted';
 export default function HomePage() {
   const mounted = useMounted();
   const { data: session, status } = useSession();
-  const { currentView, setUser, setView, setLoading, focusMode, setFocusMode, activeMission } = useAppStore();
+  const { currentView, setUser, setView, setLoading, focusMode, setFocusMode, activeMission, focusDuration } = useAppStore();
   const [showOnboarding, setShowOnboarding] = useState(false);
-  const [onboardingChecked, setOnboardingChecked] = useState(false);
+  const onboardingCheckedRef = useRef(false);
 
   // Check onboarding status
   useEffect(() => {
-    if (status === 'authenticated' && !onboardingChecked) {
-      setOnboardingChecked(true);
+    if (status === 'authenticated' && !onboardingCheckedRef.current) {
+      onboardingCheckedRef.current = true;
       const user = session?.user as Record<string, unknown> | undefined;
       if (!user?.onboarded) {
         fetch('/api/onboarding').then(r => r.json()).then(d => {
@@ -36,7 +36,7 @@ export default function HomePage() {
         }).catch(() => {});
       }
     }
-  }, [status, session, onboardingChecked]);
+  }, [status, session]);
 
   useEffect(() => {
     if (status === 'authenticated' && session?.user && !showOnboarding) {
@@ -95,10 +95,9 @@ export default function HomePage() {
 
   // Focus mode overlay
   if (focusMode === 'focus') {
-    const dur = useAppStore.getState().stats?.avgSessionMinutes ? useAppStore.getState().stats!.avgSessionMinutes * 60 : 1500;
     return (
       <FocusMode
-        duration={1500}
+        duration={focusDuration}
         missionTitle={activeMission?.title || null}
         onExit={handleFocusExit}
       />
