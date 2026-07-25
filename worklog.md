@@ -1,28 +1,37 @@
 ---
 Task ID: 1
-Agent: main
-Task: Verify all 10 features of MindGuard AI, fix errors, confirm preview loads
+Agent: Main Agent
+Task: Fix Mission Launch checklist - enforce strict pre-launch validation
 
 Work Log:
-- Read all source files to assess implementation status
-- Found and fixed 4 bugs:
-  1. celebration-screen.tsx line 45: stray 'n' character causing JSX parse error
-  2. attention-score.tsx: missing `cn` import from @/lib/utils
-  3. dashboard-view.tsx: unused `FocusSession` import causing lint warning
-  4. focus-mode.tsx: handleComplete called before definition (TDZ error), timer not pausing
-- Fixed heatmap.tsx line 91: malformed JSX comment missing `*/`
-- STEP 1: `bun run lint` — 0 errors
-- STEP 2: `bun run build` — compiled successfully, 14 routes generated
-- STEP 3: Dev server started (production mode due to OOM constraints in sandbox)
-- STEP 4: Agent-browser verification:
-  - Landing page renders: full hero, features, testimonials
-  - Login works: JS form fill + submit navigates to dashboard
-  - Dashboard renders with all new widgets verified
-  - Timer view renders with mission indicator, timer ring, presets
-  - Mission Launch screen renders on Start Focus click
-  - Keyboard Shortcuts modal renders on ? button click
+- Read existing MissionLaunch component (mission-launch.tsx) - found it had checklist items but no enforcement
+- Read timer-view.tsx to understand how MissionLaunch is invoked (showLaunch state)
+- Read app-store.ts to check for debug exposure
+- Rewrote MissionLaunch component with all requirements:
+  - 4 checklist items: Phone Silent, Water Nearby, Notifications Off, Ready to Focus
+  - Button disabled until ALL items checked (disabled={!allChecked})
+  - Disabled state: opacity-50, cursor-not-allowed, zinc-800 bg, zinc-500 text
+  - Enabled state: emerald gradient, animated glow pulse overlay, background blur glow
+  - Progress indicator: animated progress bar + "X/4 Ready" counter
+  - Toast notification on early click: toast.error('Complete your setup first')
+  - Each item has a unique icon (ShieldOff, Droplets, BellOff, Crosshair)
+  - Spring-animated check marks, staggered entrance animations
+- Removed debug exposure from app-store.ts (_setState, _getState, window.__appStore)
+- Verified lint passes clean (no errors)
+- Verified server compiles and returns HTTP 200
 
 Stage Summary:
-- All 10 features have code implementations
-- 8 of 10 verified in browser (onboarding skipped because test user is already onboarded, celebration/immersive focus require running a real session)
-- Production build uses ~110MB RAM, dev server OOM-kills at ~1.6GB in this sandbox
+- MissionLaunch now strictly enforces all 4 checklist items before allowing session start
+- Visual feedback: disabled button at 50% opacity, enabled button with emerald glow pulse
+- Progress bar with "X/4 Ready" text updates in real-time
+- Toast error shown if user tries clicking Start Mission early
+- Debug code removed from app-store.ts
+- Server compiles and serves successfully (HTTP 200)
+- Note: agent-browser cannot connect to localhost in this sandbox environment (Chrome runs in isolated network namespace), but code is verified via lint + successful compilation
+
+---
+Previous Context (from session continuation):
+- Audio player system was completed in prior session (real HTMLAudioElement with 3 tracks)
+- Timer system was already fixed to use Date.now()-based timing in prior session
+- Focus mode has proper pause/resume/stop with interval cleanup
+- Audio files exist at /public/audio/{classical-study,deep-focus,rain-ambient}.wav
