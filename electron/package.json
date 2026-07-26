@@ -50,7 +50,8 @@
         "dir"
       ],
       "icon": "assets/icon.ico",
-      "publisherName": "Abdul Rehman"
+      "publisherName": "Abdul Rehman",
+      "verifyUpdateCodeSignature": false
     },
     "mac": {
       "target": ["dmg"],
