@@ -50,5 +50,11 @@ test
 prompt
 
 server.log
+# Database file (changes during runtime)
+db/custom.db
+
+# Tool result artifacts
+tool-results/
+
 # Skills directory
 /skills/
