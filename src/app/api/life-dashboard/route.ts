@@ -4,6 +4,11 @@ import { db } from '@/lib/db';
 import { calculateStreak, calculateFocusScore } from '@/lib/analytics';
 import { logError } from '@/lib/logger';
 import { format, startOfDay, endOfDay, subDays, startOfWeek, isSameDay } from 'date-fns';
+import type { ActivityType } from '@/types';
+
+const PRODUCTIVE_TYPES: ActivityType[] = ['focus', 'deep_work', 'learning', 'coding', 'writing'];
+const DISTRACTED_TYPES: ActivityType[] = ['distracted', 'browsing', 'entertainment', 'gaming', 'app_usage', 'website_usage'];
+const IDLE_TYPES: ActivityType[] = ['idle', 'break'];
 
 const CATEGORY_COLORS: Record<string, string> = {
   coding: 'text-emerald-400',
@@ -11,6 +16,9 @@ const CATEGORY_COLORS: Record<string, string> = {
   communication: 'text-sky-400',
   entertainment: 'text-rose-400',
   research: 'text-amber-400',
+  writing: 'text-teal-400',
+  meetings: 'text-indigo-400',
+  learning: 'text-cyan-400',
   other: 'text-zinc-400',
 };
 
@@ -25,7 +33,7 @@ export async function GET() {
     const todayEnd = endOfDay(now);
     const weekAgo = subDays(now, 6);
 
-    const [sessions, activities, missions, user, achievements, reflections, streak] = await Promise.all([
+    const [sessions, activities, missions, user, achievements, reflections, streak, desktopSettings] = await Promise.all([
       // All sessions this week
       db.focusSession.findMany({
         where: { userId, startedAt: { gte: weekAgo } },
@@ -53,6 +61,8 @@ export async function GET() {
         select: { date: true },
       }),
       calculateStreak(userId),
+      // Desktop settings (to show connection status)
+      db.desktopSettings.findUnique({ where: { userId } }),
     ]);
 
     // Today's sessions
@@ -60,15 +70,15 @@ export async function GET() {
     const todayMinutes = Math.round(todaySessions.reduce((a, s) => a + s.duration, 0) / 60);
     const weeklyMinutes = Math.round(sessions.reduce((a, s) => a + s.duration, 0) / 60);
 
-    // Desktop activity calculations
+    // Desktop activity calculations (with expanded type support)
     const productiveMinutes = Math.round(
-      activities.filter((a) => a.type === 'focus' || a.type === 'deep_work').reduce((a, act) => a + act.duration, 0) / 60
-    );
+      activities.filter((a) => PRODUCTIVE_TYPES.includes(a.type as ActivityType)).reduce((a, act) => a + act.duration, 0) / 60
+    ) + todayMinutes; // Include focus session minutes
     const distractedMinutes = Math.round(
-      activities.filter((a) => a.type === 'distracted' || a.type === 'app_usage' || a.type === 'website_usage').reduce((a, act) => a + act.duration, 0) / 60
+      activities.filter((a) => DISTRACTED_TYPES.includes(a.type as ActivityType)).reduce((a, act) => a + act.duration, 0) / 60
     );
     const idleMinutes = Math.round(
-      activities.filter((a) => a.type === 'idle').reduce((a, act) => a + act.duration, 0) / 60
+      activities.filter((a) => IDLE_TYPES.includes(a.type as ActivityType)).reduce((a, act) => a + act.duration, 0) / 60
     );
     const deepWorkMinutes = Math.round(
       activities.filter((a) => a.type === 'deep_work').reduce((a, act) => a + act.duration, 0) / 60
@@ -87,15 +97,20 @@ export async function GET() {
     // Attention score (using shared helper)
     const attentionScore = calculateFocusScore(todayMinutes, weeklyMinutes, streak);
 
-    // Hourly distribution (today)
-    const hourlyDistribution = Array.from({ length: 24 }, (_, h) => ({
-      hour: h,
-      minutes: Math.round(
+    // Hourly distribution (today) — now includes desktop activities
+    const hourlyDistribution = Array.from({ length: 24 }, (_, h) => {
+      const sessionMinutes = Math.round(
         todaySessions
           .filter((s) => new Date(s.startedAt).getHours() === h)
           .reduce((a, s) => a + s.duration, 0) / 60
-      ),
-    }));
+      );
+      const activityMinutes = Math.round(
+        activities
+          .filter((a) => new Date(a.startedAt).getHours() === h && PRODUCTIVE_TYPES.includes(a.type as ActivityType))
+          .reduce((a, act) => a + act.duration, 0) / 60
+      );
+      return { hour: h, minutes: sessionMinutes + activityMinutes };
+    });
 
     // Category breakdown from desktop activities
     const categoryMap = new Map<string, number>();
@@ -111,14 +126,19 @@ export async function GET() {
       }))
       .sort((a, b) => b.minutes - a.minutes);
 
-    // Recent activity feed
+    // Recent activity feed — now includes app names
     const recentActivity = activities.slice(0, 10).map((a) => ({
       id: a.id,
       type: a.type,
-      title: a.title || a.type,
+      title: a.title || a.application || a.type,
       startedAt: a.startedAt.toISOString(),
       duration: a.duration,
+      application: a.application || undefined,
+      website: a.website || undefined,
     }));
+
+    // Desktop tracker connection status
+    const trackerConnected = activities.length > 0;
 
     return NextResponse.json({
       totalLaptopMinutes,
@@ -138,6 +158,11 @@ export async function GET() {
       hourlyDistribution,
       categoryBreakdown,
       recentActivity,
+      trackerConnected,
+      desktopSettings: desktopSettings ? {
+        trackingEnabled: desktopSettings.trackingEnabled,
+        privacyMode: desktopSettings.privacyMode,
+      } : null,
     });
   } catch (e) {
     logError("life-dashboard", "Failed to load life dashboard", e);

@@ -19,9 +19,14 @@ import {
   BarChart3,
   Activity,
   Eye,
+  Wifi,
+  WifiOff,
+  AppWindow,
+  Globe,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { useAppStore } from '@/stores/app-store';
 import { StaggerContainer, StaggerItem } from '@/components/premium/stagger';
 import { AnimatedNumber } from '@/components/premium/animated-number';
@@ -75,6 +80,79 @@ const MetricCard = React.memo(function MetricCard({
         </CardContent>
       </Card>
     </motion.div>
+  );
+});
+
+// ---- Tracker Status Banner ----
+const TrackerBanner = React.memo(function TrackerBanner({
+  connected,
+  currentApp,
+  currentWebsite,
+}: {
+  connected: boolean;
+  currentApp: string | null;
+  currentWebsite: string | null;
+}) {
+  return (
+    <Card className={cn(
+      "card-glow glass-card glass-glow-edge border-white/[0.06]",
+      connected ? "bg-emerald-500/[0.03]" : "bg-white/[0.01]"
+    )}>
+      <CardContent className="p-3 sm:p-4">
+        <div className="flex items-center gap-3">
+          <div className={cn(
+            'flex h-9 w-9 items-center justify-center rounded-lg shrink-0',
+            connected ? 'bg-emerald-500/[0.08]' : 'bg-zinc-500/[0.06]'
+          )} aria-hidden="true">
+            {connected ? (
+              <Wifi className="h-4 w-4 text-emerald-400" />
+            ) : (
+              <WifiOff className="h-4 w-4 text-zinc-500" />
+            )}
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 mb-0.5">
+              <span className={cn(
+                'text-xs font-medium',
+                connected ? 'text-emerald-400' : 'text-zinc-400'
+              )}>Desktop Tracker</span>
+              <Badge variant="outline" className={cn(
+                'text-[9px] h-4 px-1.5',
+                connected
+                  ? 'border-emerald-500/20 bg-emerald-500/[0.08] text-emerald-400'
+                  : 'border-zinc-500/20 bg-zinc-500/[0.06] text-zinc-500'
+              )}>
+                {connected ? 'Live' : 'Offline'}
+              </Badge>
+            </div>
+            {connected && currentApp ? (
+              <div className="flex items-center gap-2 text-xs text-zinc-400">
+                <AppWindow className="h-3 w-3 shrink-0" aria-hidden="true" />
+                <span className="truncate font-medium text-zinc-300">{currentApp}</span>
+                {currentWebsite && (
+                  <span className="text-zinc-600 truncate">
+                    · <Globe className="h-3 w-3 inline shrink-0" aria-hidden="true" /> {currentWebsite}
+                  </span>
+                )}
+              </div>
+            ) : !connected ? (
+              <p className="text-xs text-zinc-600">Install MindGuard Desktop for real-time activity tracking</p>
+            ) : null}
+          </div>
+          {!connected && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="shrink-0 border-white/[0.08] text-zinc-300 hover:bg-white/[0.04] hover:text-zinc-100"
+              onClick={() => window.open('https://github.com/abdul-rehman-s/mindguard/releases', '_blank')}
+              aria-label="Download MindGuard Desktop"
+            >
+              Download
+            </Button>
+          )}
+        </div>
+      </CardContent>
+    </Card>
   );
 });
 
@@ -224,14 +302,30 @@ export function LifeDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  // Desktop tracker state
+  const [trackerConnected, setTrackerConnected] = useState(false);
+  const [currentApp, setCurrentApp] = useState<string | null>(null);
+  const [currentWebsite, setCurrentWebsite] = useState<string | null>(null);
+
   const fetchLife = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
+      // Fetch life dashboard data
       const res = await fetch('/api/life-dashboard');
       if (!res.ok) throw new Error('Failed');
       const data = (await res.json()) as LifeDashboardData;
       setLifeData(data);
+      setTrackerConnected(data.trackerConnected ?? false);
+
+      // Also fetch desktop status for current app/website
+      const statusRes = await fetch('/api/desktop/status');
+      if (statusRes.ok) {
+        const statusData = await statusRes.json();
+        setTrackerConnected(statusData.connected);
+        setCurrentApp(statusData.currentApp);
+        setCurrentWebsite(statusData.currentWebsite);
+      }
     } catch {
       setError('Failed to load life dashboard');
     } finally {
@@ -240,6 +334,22 @@ export function LifeDashboard() {
   }, [setLifeData]);
 
   useEffect(() => { fetchLife(); }, [fetchLife]);
+
+  // Poll desktop status every 30s
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch('/api/desktop/status');
+        if (res.ok) {
+          const data = await res.json();
+          setTrackerConnected(data.connected);
+          setCurrentApp(data.currentApp);
+          setCurrentWebsite(data.currentWebsite);
+        }
+      } catch { /* silent fail */ }
+    }, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   if (loading) {
     return <LifeDashboardSkeleton />;
@@ -260,20 +370,27 @@ export function LifeDashboard() {
   return (
     <StaggerContainer className="app-grid-bg min-h-full -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
       {/* Header */}
-      <StaggerItem className="mb-8 pt-2">
-        <div className="flex items-center gap-3.5">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500/15 to-teal-500/10" aria-hidden="true">
-            <Monitor className="h-5 w-5 text-emerald-400" />
-          </div>
-          <div>
-            <h2 className="heading-lg text-[1.65rem] font-semibold tracking-[-0.02em] text-zinc-100">
-              Life Dashboard
-            </h2>
-            <p className="mt-0.5 text-sm leading-relaxed text-zinc-500">
-              Your complete daily activity overview
-            </p>
+      <StaggerItem className="mb-6 pt-2">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3.5">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500/15 to-teal-500/10" aria-hidden="true">
+              <Monitor className="h-5 w-5 text-emerald-400" />
+            </div>
+            <div>
+              <h2 className="heading-lg text-[1.65rem] font-semibold tracking-[-0.02em] text-zinc-100">
+                Life Dashboard
+              </h2>
+              <p className="mt-0.5 text-sm leading-relaxed text-zinc-500">
+                Your complete daily activity overview
+              </p>
+            </div>
           </div>
         </div>
+      </StaggerItem>
+
+      {/* Tracker Status Banner */}
+      <StaggerItem className="mb-6">
+        <TrackerBanner connected={trackerConnected} currentApp={currentApp} currentWebsite={currentWebsite} />
       </StaggerItem>
 
       {/* Hero row: XP Level Ring + Attention Score + Streak */}
@@ -395,7 +512,10 @@ export function LifeDashboard() {
         className="mt-8 text-center"
       >
         <p className="text-[11px] text-zinc-700">
-          Connect the MindGuard Desktop Companion (Electron/Tauri) for real-time screen time, app tracking, and website usage data.
+          {trackerConnected
+            ? 'Desktop tracker is connected — activity data is updated in real-time.'
+            : 'Connect the MindGuard Desktop Companion for real-time screen time, app tracking, and website usage data.'
+          }
         </p>
       </motion.div>
     </StaggerContainer>

@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { AppView, DashboardStats, WeeklyData, FocusModeState, OnboardingData, CoachData, WeeklyWrapped, LifeDashboardData, DailyReviewData, NotificationItem } from "@/types";
+import type { AppView, DashboardStats, WeeklyData, FocusModeState, OnboardingData, CoachData, WeeklyWrapped, LifeDashboardData, DailyReviewData, NotificationItem, DesktopStatus, DesktopSettingsData, ProductivityMetrics, BehavioralCoachData, DesktopTimelineEntry } from "@/types";
 import type { Mission, FocusSession, DailyReflection, Achievement } from "@prisma/client";
 
 export type SafeUser = {
@@ -67,6 +67,18 @@ interface AppState {
   setNotifications: (n: NotificationItem[]) => void;
   unreadCount: number;
   setUnreadCount: (c: number) => void;
+
+  // Desktop Agent state
+  desktopStatus: DesktopStatus | null;
+  setDesktopStatus: (s: DesktopStatus | null) => void;
+  desktopSettings: DesktopSettingsData | null;
+  setDesktopSettings: (s: DesktopSettingsData | null) => void;
+  desktopTimeline: DesktopTimelineEntry[];
+  setDesktopTimeline: (t: DesktopTimelineEntry[]) => void;
+  productivityMetrics: ProductivityMetrics | null;
+  setProductivityMetrics: (m: ProductivityMetrics | null) => void;
+  behavioralCoach: BehavioralCoachData | null;
+  setBehavioralCoach: (c: BehavioralCoachData | null) => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -127,5 +139,16 @@ export const useAppStore = create<AppState>((set) => ({
   setNotifications: (notifications) => set({ notifications }),
   unreadCount: 0,
   setUnreadCount: (unreadCount) => set({ unreadCount }),
+
+  desktopStatus: null,
+  setDesktopStatus: (desktopStatus) => set({ desktopStatus }),
+  desktopSettings: null,
+  setDesktopSettings: (desktopSettings) => set({ desktopSettings }),
+  desktopTimeline: [],
+  setDesktopTimeline: (desktopTimeline) => set({ desktopTimeline }),
+  productivityMetrics: null,
+  setProductivityMetrics: (productivityMetrics) => set({ productivityMetrics }),
+  behavioralCoach: null,
+  setBehavioralCoach: (behavioralCoach) => set({ behavioralCoach }),
 
 }));

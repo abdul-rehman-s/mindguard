@@ -291,8 +291,8 @@ export interface NotificationItem {
   createdAt: string;
 }
 
-export type ActivityType = "focus" | "idle" | "distracted" | "break" | "deep_work" | "app_usage" | "website_usage";
-export type ActivityCategory = "coding" | "design" | "communication" | "entertainment" | "research" | "other";
+export type ActivityType = "focus" | "idle" | "distracted" | "break" | "deep_work" | "learning" | "coding" | "writing" | "meetings" | "browsing" | "entertainment" | "gaming" | "app_usage" | "website_usage";
+export type ActivityCategory = "coding" | "design" | "communication" | "entertainment" | "research" | "writing" | "meetings" | "learning" | "other";
 
 export interface CreateActivityInput {
   type: ActivityType;
@@ -304,4 +304,76 @@ export interface CreateActivityInput {
   application?: string;
   website?: string;
   metadata?: string;
+}
+
+export interface BatchActivityInput {
+  activities: CreateActivityInput[];
+}
+
+// ─── Desktop Agent types ───
+
+export interface DesktopStatus {
+  connected: boolean;
+  trackingEnabled: boolean;
+  currentApp: string | null;
+  currentWebsite: string | null;
+  currentActivityType: ActivityType | null;
+  idleMinutes: number;
+  lastActivityAt: string | null;
+}
+
+export interface DesktopTimelineEntry {
+  id: string;
+  time: string;
+  endTime?: string;
+  type: ActivityType;
+  title: string;
+  application?: string;
+  website?: string;
+  duration: number;
+  category?: ActivityCategory;
+}
+
+export interface ProductivityMetrics {
+  productiveMinutes: number;
+  distractedMinutes: number;
+  idleMinutes: number;
+  deepWorkSessions: number;
+  contextSwitches: number;
+  longestFocusSession: number;
+  focusRatio: number;
+  bestHour: number | null;
+  worstHour: number | null;
+}
+
+export interface DesktopSettingsData {
+  autoStart: boolean;
+  runInBackground: boolean;
+  privacyMode: boolean;
+  trackingEnabled: boolean;
+  trackingExclusions: string[];
+  blockedApps: string[];
+  blockedWebsites: string[];
+  notificationPrefs: {
+    idleAlert: boolean;
+    breakReminder: boolean;
+    focusCelebration: boolean;
+    missionReminder: boolean;
+  };
+  focusProtection: boolean;
+  muteNotifications: boolean;
+  trackerInterval: number;
+}
+
+export interface BehavioralCoachData {
+  patterns: {
+    excessiveContextSwitching: boolean;
+    lateNightWork: boolean;
+    burnoutRisk: boolean;
+    distractionSpike: boolean;
+    poorConsistency: boolean;
+  };
+  bestWorkingHours: number[];
+  recommendations: string[];
+  summary: string;
 }

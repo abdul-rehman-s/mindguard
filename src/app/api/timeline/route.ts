@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getAuthUserId } from '@/lib/auth-utils';
 import { db } from '@/lib/db';
 import { logError } from '@/lib/logger';
+import { format } from 'date-fns';
 
 type TimelineEvent = {
   id: string;
@@ -11,7 +12,8 @@ type TimelineEvent = {
     | 'reflection'
     | 'mission_created'
     | 'mission_completed'
-    | 'achievement_unlocked';
+    | 'achievement_unlocked'
+    | 'desktop_activity';
   title: string;
   subtitle?: string;
   time: string;
@@ -36,6 +38,7 @@ export async function GET() {
       missionsCreatedToday,
       missionsCompletedToday,
       achievementsUnlockedToday,
+      desktopActivities,
     ] = await Promise.all([
       db.focusSession.findMany({
         where: { userId, endedAt: { gte: today } },
@@ -58,9 +61,33 @@ export async function GET() {
         where: { userId, unlockedAt: { gte: today } },
         orderBy: { unlockedAt: 'desc' },
       }),
+      // Desktop activities for today — merge into timeline
+      db.desktopActivity.findMany({
+        where: { userId, startedAt: { gte: today } },
+        orderBy: { startedAt: 'asc' },
+        take: 100,
+      }),
     ]);
 
     const events: TimelineEvent[] = [];
+
+    // Add desktop activities to timeline
+    for (const a of desktopActivities) {
+      const title = a.title || a.application || a.type;
+      const subtitle = a.application && a.website
+        ? `${a.application} — ${a.website}`
+        : a.website || a.application || undefined;
+
+      events.push({
+        id: a.id,
+        type: 'desktop_activity',
+        title,
+        subtitle,
+        time: a.startedAt.toISOString(),
+        minutes: Math.round(a.duration / 60),
+        group: '',
+      });
+    }
 
     for (const s of sessions) {
       const isBreak = s.type === 'break';

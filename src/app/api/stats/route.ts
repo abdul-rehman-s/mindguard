@@ -4,6 +4,9 @@ import { db } from "@/lib/db";
 import { calculateStreak, calculateFocusScore } from "@/lib/analytics";
 import { logError } from "@/lib/logger";
 import { format, subDays, startOfDay, endOfDay, isSameDay, startOfWeek } from "date-fns";
+import type { ActivityType } from "@/types";
+
+const PRODUCTIVE_ACTIVITY_TYPES: ActivityType[] = ["focus", "deep_work", "learning", "coding", "writing"];
 
 export async function GET() {
   const userIdOr401 = await getAuthUserId();
@@ -13,10 +16,9 @@ export async function GET() {
   try {
     const now = new Date();
     const todayStart = startOfDay(now);
-    const todayEnd = endOfDay(now);
     const weekAgo = subDays(now, 6);
 
-    const [sessions, recentSessions, activeMission, streak] = await Promise.all([
+    const [sessions, recentSessions, activeMission, streak, todayActivities] = await Promise.all([
       db.focusSession.findMany({
         where: {
           userId,
@@ -36,6 +38,13 @@ export async function GET() {
         include: { focusSessions: true },
       }),
       calculateStreak(userId),
+      // Desktop activities today for enhanced stats
+      db.desktopActivity.findMany({
+        where: { userId, startedAt: { gte: todayStart } },
+        select: { id: true, duration: true, type: true, application: true, startedAt: true },
+        orderBy: { startedAt: "desc" },
+        take: 20,
+      }),
     ]);
 
     const todaySessions = sessions.filter((s) =>
@@ -47,6 +56,13 @@ export async function GET() {
     const weeklyMinutes = Math.round(
       sessions.reduce((acc, s) => acc + s.duration, 0) / 60
     );
+
+    // Include desktop productive minutes in today's focus
+    const desktopProductiveMinutes = Math.round(
+      todayActivities.filter((a) => PRODUCTIVE_ACTIVITY_TYPES.includes(a.type as ActivityType))
+        .reduce((acc, a) => acc + a.duration, 0) / 60
+    );
+    const todayFocusMinutes = todayMinutes + desktopProductiveMinutes;
 
     const weekDays = Array.from({ length: 7 }, (_, i) => {
       const day = subDays(now, 6 - i);
@@ -66,7 +82,7 @@ export async function GET() {
       sessions.reduce((acc, s) => acc + s.duration, 0) / 60
     );
 
-    const focusScore = calculateFocusScore(todayMinutes, weeklyMinutes, streak);
+    const focusScore = calculateFocusScore(todayFocusMinutes, weeklyMinutes, streak);
 
     const weekStartMon = startOfWeek(now, { weekStartsOn: 1 });
     const [
@@ -92,8 +108,13 @@ export async function GET() {
       db.mission.count({ where: { userId, status: "completed" } }),
     ]);
 
+    // Current application (from desktop activities)
+    const currentApp = todayActivities.length > 0
+      ? todayActivities[0].application || todayActivities[0].type
+      : null;
+
     return NextResponse.json({
-      todayFocusMinutes: todayMinutes,
+      todayFocusMinutes,
       weeklyFocusMinutes: weeklyMinutes,
       totalFocusMinutes: totalMinutes,
       currentStreak: streak,
@@ -109,6 +130,8 @@ export async function GET() {
       todayReflection: !!todayReflectionRecord,
       weeklyMissionsCompleted,
       totalMissionsCompleted: totalMissionCount,
+      currentApp,
+      desktopActivityCount: todayActivities.length,
     });
   } catch (e) {
     logError("stats", "Failed to fetch stats", e);

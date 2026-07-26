@@ -50,6 +50,39 @@ export const updateSettingsSchema = z.object({
   displayName: z.string().max(50).optional(),
 });
 
+export const batchActivitiesSchema = z.object({
+  activities: z.array(z.object({
+    type: z.enum(["focus", "idle", "distracted", "break", "deep_work", "learning", "coding", "writing", "meetings", "browsing", "entertainment", "gaming", "app_usage", "website_usage"]),
+    title: z.string().max(500).optional(),
+    category: z.enum(["coding", "design", "communication", "entertainment", "research", "writing", "meetings", "learning", "other"]).optional(),
+    duration: z.number().int().min(1),
+    startedAt: z.string(),
+    endedAt: z.string().optional(),
+    application: z.string().max(200).optional(),
+    website: z.string().max(500).optional(),
+    metadata: z.string().max(5000).optional(),
+  })).min(1).max(100),
+});
+
+export const desktopSettingsSchema = z.object({
+  autoStart: z.boolean().optional(),
+  runInBackground: z.boolean().optional(),
+  privacyMode: z.boolean().optional(),
+  trackingEnabled: z.boolean().optional(),
+  trackingExclusions: z.array(z.string()).max(50).optional(),
+  blockedApps: z.array(z.string()).max(50).optional(),
+  blockedWebsites: z.array(z.string()).max(100).optional(),
+  notificationPrefs: z.object({
+    idleAlert: z.boolean().optional(),
+    breakReminder: z.boolean().optional(),
+    focusCelebration: z.boolean().optional(),
+    missionReminder: z.boolean().optional(),
+  }).optional(),
+  focusProtection: z.boolean().optional(),
+  muteNotifications: z.boolean().optional(),
+  trackerInterval: z.number().int().min(5).max(120).optional(),
+});
+
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
 export type CreateMissionInputValidated = z.infer<typeof createMissionSchema>;
@@ -57,3 +90,5 @@ export type UpdateMissionInputValidated = z.infer<typeof updateMissionSchema>;
 export type CreateSessionInputValidated = z.infer<typeof createSessionSchema>;
 export type CreateReflectionInputValidated = z.infer<typeof createReflectionSchema>;
 export type UpdateSettingsInputValidated = z.infer<typeof updateSettingsSchema>;
+export type BatchActivitiesInputValidated = z.infer<typeof batchActivitiesSchema>;
+export type DesktopSettingsInputValidated = z.infer<typeof desktopSettingsSchema>;

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import {
   Timer,
@@ -18,6 +18,10 @@ import {
   Sun,
   SunDim,
   Moon,
+  Monitor,
+  Wifi,
+  WifiOff,
+  AppWindow,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -81,6 +85,59 @@ const StatCard = React.memo(function StatCard({ icon: Icon, label, value, sub, p
               />
             </div>
           )}
+        </CardContent>
+      </Card>
+    </motion.div>
+  );
+});
+
+// ---- Desktop Tracker Status Badge ----
+const TrackerStatusBadge = React.memo(function TrackerStatusBadge({ connected, currentApp }: { connected: boolean; currentApp: string | null }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.9 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ delay: 0.5, duration: 0.4 }}
+    >
+      <Card className="card-glow glass-card glass-glow-edge border-white/[0.06] bg-white/[0.02]">
+        <CardContent className="p-3 sm:p-4">
+          <div className="flex items-center gap-3">
+            <div className={cn(
+              'flex h-8 w-8 items-center justify-center rounded-lg',
+              connected ? 'bg-emerald-500/[0.08]' : 'bg-zinc-500/[0.06]'
+            )} aria-hidden="true">
+              {connected ? (
+                <Wifi className="h-4 w-4 text-emerald-400" />
+              ) : (
+                <WifiOff className="h-4 w-4 text-zinc-500" />
+              )}
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <span className={cn(
+                  'text-[11px] font-medium uppercase tracking-wider',
+                  connected ? 'text-emerald-400' : 'text-zinc-500'
+                )}>
+                  Desktop Tracker
+                </span>
+                <Badge variant="outline" className={cn(
+                  'text-[9px] h-4 px-1.5',
+                  connected
+                    ? 'border-emerald-500/20 bg-emerald-500/[0.08] text-emerald-400'
+                    : 'border-zinc-500/20 bg-zinc-500/[0.06] text-zinc-500'
+                )}>
+                  {connected ? 'Connected' : 'Offline'}
+                </Badge>
+              </div>
+              {connected && currentApp ? (
+                <p className="mt-0.5 text-xs text-zinc-400 truncate">
+                  Currently: <span className="font-medium text-zinc-300">{currentApp}</span>
+                </p>
+              ) : !connected ? (
+                <p className="mt-0.5 text-xs text-zinc-600">Install the desktop companion for real-time tracking</p>
+              ) : null}
+            </div>
+          </div>
         </CardContent>
       </Card>
     </motion.div>
@@ -196,6 +253,10 @@ export function DashboardView() {
   const activeMission = useAppStore(s => s.activeMission);
   const recentSessions = useAppStore(s => s.recentSessions);
 
+  // Desktop tracker status
+  const [trackerConnected, setTrackerConnected] = useState(false);
+  const [currentApp, setCurrentApp] = useState<string | null>(null);
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -219,6 +280,9 @@ export function DashboardView() {
       });
       setActiveMission(data.activeMission);
       setRecentSessions(data.recentSessions);
+      // Desktop tracker status
+      setTrackerConnected(data.desktopActivityCount > 0);
+      setCurrentApp(data.currentApp || null);
     } catch {
       setError('Failed to load dashboard data');
     } finally {
@@ -227,6 +291,21 @@ export function DashboardView() {
   }, [setStats, setActiveMission, setRecentSessions]);
 
   useEffect(() => { fetchDashboard(); }, [fetchDashboard]);
+
+  // Poll desktop status every 30 seconds
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch('/api/desktop/status');
+        if (res.ok) {
+          const data = await res.json();
+          setTrackerConnected(data.connected);
+          setCurrentApp(data.currentApp);
+        }
+      } catch { /* silent fail — polling */ }
+    }, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   if (loading) {
     return <DashboardSkeleton />;
@@ -254,21 +333,25 @@ export function DashboardView() {
       className="app-grid-bg min-h-full -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8"
     >
       {/* Greeting */}
-      <motion.div variants={staggerItem} className="mb-10 pt-2">
-        <div className="flex items-center gap-3.5">
-          <div className={cn('flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br', gradient)} aria-hidden="true">
-            <GreetingIcon className={cn('h-5 w-5', iconColor)} />
+      <motion.div variants={staggerItem} className="mb-8 pt-2">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3.5">
+            <div className={cn('flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br', gradient)} aria-hidden="true">
+              <GreetingIcon className={cn('h-5 w-5', iconColor)} />
+            </div>
+            <div>
+              <h2 className="heading-lg text-[1.65rem] font-semibold tracking-[-0.02em] text-zinc-100">
+                Good {greeting}
+              </h2>
+              <p className="mt-0.5 text-sm leading-relaxed text-zinc-500">
+                {activeMission
+                  ? (<span>Working on <span className="font-medium text-zinc-300">{activeMission.title}</span></span>)
+                  : 'Set a mission to start your focused day.'}
+              </p>
+            </div>
           </div>
-          <div>
-            <h2 className="heading-lg text-[1.65rem] font-semibold tracking-[-0.02em] text-zinc-100">
-              Good {greeting}
-            </h2>
-            <p className="mt-0.5 text-sm leading-relaxed text-zinc-500">
-              {activeMission
-                ? (<span>Working on <span className="font-medium text-zinc-300">{activeMission.title}</span></span>)
-                : 'Set a mission to start your focused day.'}
-            </p>
-          </div>
+          {/* Desktop Tracker Status */}
+          <TrackerStatusBadge connected={trackerConnected} currentApp={currentApp} />
         </div>
       </motion.div>
 

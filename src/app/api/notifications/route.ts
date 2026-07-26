@@ -115,17 +115,37 @@ export async function PUT() {
     const todayMinutes = Math.round(todaySessions.reduce((a, s) => a + s.duration, 0) / 60);
     const created: { type: string; title: string; body: string; actionUrl?: string }[] = [];
 
-    // Check idle time (no session in last 25+ minutes)
-    if (todaySessions.length > 0) {
-      const lastSessionEnd = new Date(
-        Math.max(...todaySessions.map((s) => new Date(s.startedAt).getTime() + s.duration * 1000))
-      );
-      const idleMinutes = (now.getTime() - lastSessionEnd.getTime()) / 60000;
-      if (idleMinutes >= 25 && (!lastNotification || lastNotification.type !== 'idle_alert' || now.getTime() - lastNotification.createdAt.getTime() > 1800000)) {
+    // Check idle time (no session in last 25+ minutes OR no desktop activity in last 15+ minutes)
+    const desktopActivities = await db.desktopActivity.findMany({
+      where: { userId, startedAt: { gte: todayStart } },
+      orderBy: { startedAt: 'desc' },
+      take: 5,
+    });
+
+    let desktopIdleMinutes = 0;
+    if (desktopActivities.length > 0) {
+      const lastDesktopActivity = desktopActivities[0];
+      const lastActivityEnd = lastDesktopActivity.endedAt
+        ? new Date(lastDesktopActivity.endedAt).getTime()
+        : new Date(lastDesktopActivity.startedAt).getTime() + lastDesktopActivity.duration * 1000;
+      desktopIdleMinutes = Math.max(0, Math.round((now.getTime() - lastActivityEnd) / 60000));
+    }
+
+    if (todaySessions.length > 0 || desktopActivities.length > 0) {
+      const lastSessionEnd = todaySessions.length > 0
+        ? new Date(Math.max(...todaySessions.map((s) => new Date(s.startedAt).getTime() + s.duration * 1000)))
+        : new Date(0);
+      const lastDesktopEnd = desktopActivities.length > 0
+        ? new Date(desktopActivities[0].endedAt || new Date(desktopActivities[0].startedAt.getTime() + desktopActivities[0].duration * 1000))
+        : new Date(0);
+      const lastActivityTime = Math.max(lastSessionEnd.getTime(), lastDesktopEnd.getTime());
+      const idleMinutes = Math.max(0, Math.round((now.getTime() - lastActivityTime) / 60000));
+
+      if (idleMinutes >= 15 && (!lastNotification || lastNotification.type !== 'idle_alert' || now.getTime() - lastNotification.createdAt.getTime() > 1800000)) {
         created.push({
           type: 'idle_alert',
-          title: 'You\'ve been idle for a while',
-          body: `No focus activity in the last ${Math.floor(idleMinutes)} minutes. A short break is fine, but consider getting back to your mission.`,
+          title: idleMinutes >= 15 ? 'You\'ve been idle' : 'You\'ve been idle for a while',
+          body: `No activity detected for ${idleMinutes} minutes. Consider getting back to your mission.`,
           actionUrl: 'timer',
         });
       }

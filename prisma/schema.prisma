@@ -25,6 +25,7 @@ model User {
   reflections      DailyReflection[]
   achievements     Achievement[]
   desktopActivities DesktopActivity[]
+  desktopSettings   DesktopSettings?
   notifications    Notification[]
 }
 
@@ -91,21 +92,42 @@ model Achievement {
 model DesktopActivity {
   id            String   @id @default(cuid())
   userId        String
-  type          String   // "focus" | "idle" | "distracted" | "break" | "deep_work" | "app_usage" | "website_usage"
-  title         String?
-  category      String?  // "coding" | "design" | "communication" | "entertainment" | "research" | "other"
+  type          String   // "focus" | "idle" | "distracted" | "break" | "deep_work" | "learning" | "coding" | "writing" | "meetings" | "browsing" | "entertainment" | "gaming" | "app_usage" | "website_usage"
+  title         String?  // window title or activity description
+  category      String?  // "coding" | "design" | "communication" | "entertainment" | "research" | "writing" | "meetings" | "learning" | "other"
   duration      Int      // seconds
   startedAt     DateTime
   endedAt       DateTime?
-  application   String?  // placeholder: app name from Electron/Tauri
-  website       String?  // placeholder: domain from Electron/Tauri
-  metadata      String?  // JSON string for extensible data
+  application   String?  // app name from desktop tracker (e.g. "VS Code", "Chrome")
+  website       String?  // domain from desktop tracker (e.g. "github.com")
+  metadata      String?  // JSON string for extensible data (keyboard/mouse activity, etc.)
   createdAt     DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, startedAt])
   @@index([userId, type])
+  @@index([userId, category])
+}
+
+model DesktopSettings {
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  autoStart         Boolean  @default(false)
+  runInBackground   Boolean  @default(true)
+  privacyMode       Boolean  @default(false)
+  trackingEnabled   Boolean  @default(true)
+  trackingExclusions String?  // JSON array of excluded apps/websites
+  blockedApps       String?  // JSON array of blocked app names
+  blockedWebsites   String?  // JSON array of blocked website domains
+  notificationPrefs String?  // JSON object: { idleAlert, breakReminder, focusCelebration, missionReminder }
+  focusProtection   Boolean  @default(false)
+  muteNotifications Boolean  @default(false)
+  trackerInterval   Int      @default(30)  // tracking poll interval in seconds
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Notification {
