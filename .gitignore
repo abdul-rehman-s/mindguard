@@ -69,6 +69,12 @@ preview-check.png
 electron/node_modules/
 mini-services/*/node_modules/
 
+# Electron build artifacts
+electron/dist/
+electron/dist-electron/
+electron/build/
+electron/package-lock.json
+
 # Build caches
 node_modules/.cache/
 

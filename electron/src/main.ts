@@ -3,6 +3,7 @@
 
 import { app, BrowserWindow, session } from 'electron';
 import * as path from 'path';
+import { autoUpdater } from 'electron-updater';
 import { logger } from './logger/logger';
 import { ActivityTracker } from './tracker/activity-tracker';
 import { TrayManager } from './tray/tray-manager';
@@ -313,6 +314,51 @@ app.whenReady().then(async () => {
 
   createWindow();
   await initializeSystems();
+
+  // === Auto Updater ===
+  autoUpdater.autoDownload = false;
+  autoUpdater.autoInstallOnAppQuit = true;
+  autoUpdater.setFeedURL({
+    provider: 'github',
+    owner: 'abdul-rehman-s',
+    repo: 'mindguard',
+  });
+
+  autoUpdater.on('update-available', (info) => {
+    logger.info('AutoUpdater', 'Update available', { version: info.version });
+    // Notify user via tray/notification — they can choose to download
+    if (notificationManager) {
+      notificationManager.show({
+        type: 'context_switch_alert',
+        title: 'MindGuard Update Available',
+        body: `Version ${info.version} is available. Click to download.`,
+      });
+    }
+  });
+
+  autoUpdater.on('update-downloaded', (info) => {
+    logger.info('AutoUpdater', 'Update downloaded', { version: info.version });
+    if (notificationManager) {
+      notificationManager.show({
+        type: 'focus_celebration',
+        title: 'MindGuard Update Ready',
+        body: `Version ${info.version} downloaded. Restart to install.`,
+      });
+    }
+  });
+
+  autoUpdater.on('error', (err) => {
+    logger.error('AutoUpdater', 'Update error', { error: String(err) });
+  });
+
+  autoUpdater.on('download-progress', (progress) => {
+    logger.debug('AutoUpdater', 'Download progress', { percent: progress.percent });
+  });
+
+  // Check for updates (silent — no user interruption)
+  autoUpdater.checkForUpdates().catch((err) => {
+    logger.debug('AutoUpdater', 'Update check failed (offline or no releases)', { error: String(err) });
+  });
 });
 
 app.on('window-all-closed', () => {
