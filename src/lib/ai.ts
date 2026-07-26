@@ -2,7 +2,7 @@ import ZAI from 'z-ai-web-dev-sdk';
 import { logError } from '@/lib/logger';
 
 // Singleton pattern for AI instance
-let zaiInstance: InstanceType<typeof ZAI> | null = null;
+let zaiInstance: Awaited<ReturnType<typeof ZAI.create>> | null = null;
 
 export async function getAI() {
   if (!zaiInstance) {
@@ -18,7 +18,7 @@ export async function generateAIResponse(
 ): Promise<string> {
   try {
     const zai = await getAI();
-    const messages: Array<{ role: string; content: string }> = [
+    const messages: Array<{ role: 'assistant' | 'user' | 'system'; content: string }> = [
       { role: 'assistant', content: systemPrompt },
     ];
     if (context) {
@@ -38,7 +38,7 @@ export async function generateAIResponse(
 }
 
 export async function generateAIChat(
-  messages: Array<{ role: string; content: string }>
+  messages: Array<{ role: 'assistant' | 'user' | 'system'; content: string }>
 ): Promise<string> {
   try {
     const zai = await getAI();

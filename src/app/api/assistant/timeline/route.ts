@@ -63,8 +63,8 @@ export async function GET() {
         title: a.title || a.type,
         type: a.type,
         duration: a.duration,
-        category: a.category,
-        application: a.application,
+        category: a.category ?? undefined,
+        application: a.application ?? undefined,
       });
     }
 

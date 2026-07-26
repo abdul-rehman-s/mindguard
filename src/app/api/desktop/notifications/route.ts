@@ -9,7 +9,7 @@ import type { ActivityType } from "@/types";
 const PRODUCTIVE_TYPES: ActivityType[] = ["focus", "deep_work", "learning", "coding", "writing"];
 
 const notificationTriggerSchema = z.object({
-  type: z.enum(["idle_alert", "break_reminder", "focus_celebration", "back_to_work", "context_switch_alert"]),
+  type: z.enum(["idle_alert", "break_reminder", "focus_celebration", "back_to_work", "context_switch_alert", "mission_reminder"]),
   title: z.string().max(200),
   body: z.string().max(500),
   actionUrl: z.string().max(200).optional(),

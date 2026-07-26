@@ -316,9 +316,7 @@ export function LifeDashboard() {
       if (!res.ok) throw new Error('Failed');
       const data = (await res.json()) as LifeDashboardData;
       setLifeData(data);
-      setTrackerConnected(data.trackerConnected ?? false);
-
-      // Also fetch desktop status for current app/website
+      // Also fetch desktop status for tracker state
       const statusRes = await fetch('/api/desktop/status');
       if (statusRes.ok) {
         const statusData = await statusRes.json();

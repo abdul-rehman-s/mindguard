@@ -5,7 +5,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useAppStore } from '@/stores/app-store';
-import type { DesktopStatus } from '@/types';
+import type { AppView, DesktopStatus } from '@/types';
 
 interface DesktopIntegration {
   isElectron: boolean;
@@ -38,7 +38,7 @@ export function useDesktopIntegration(): DesktopIntegration {
     // Listen for navigation commands from tray/IPC
     const removeNavigate = desktop?.onNavigate?.((view: string) => {
       // Navigate via Zustand store
-      useAppStore.getState().setView(view);
+      useAppStore.getState().setView(view as AppView);
     });
 
     // Listen for activity updates from tracker
@@ -119,7 +119,7 @@ export function useDesktopIntegration(): DesktopIntegration {
   }, [isElectron]);
 
   const navigate = useCallback((view: string) => {
-    useAppStore.getState().setView(view);
+    useAppStore.getState().setView(view as AppView);
   }, []);
 
   return {

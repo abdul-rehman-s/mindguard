@@ -49,14 +49,14 @@ export async function POST(req: NextRequest) {
     const systemPrompt = buildAssistantSystemPrompt(userName);
 
     // Build messages array
-    const messages: Array<{ role: string; content: string }> = [
+    const messages: Array<{ role: 'assistant' | 'user' | 'system'; content: string }> = [
       { role: 'assistant', content: systemPrompt },
       { role: 'assistant', content: `User's relevant memories:\n${memoryContext}\n\nUser has ${streak} total focus sessions. Current streak data and recent patterns are available in the memories above.` },
     ];
 
     // Add conversation history
     for (const msg of conversationHistory) {
-      messages.push({ role: msg.role, content: msg.content });
+      messages.push({ role: msg.role as 'assistant' | 'user' | 'system', content: msg.content });
     }
 
     // Add user's new message

@@ -30,6 +30,7 @@ const viewTitles: Record<AppView, string> = {
   replay: 'Daily Replay',
   review: 'Daily Review',
   wrapped: 'Weekly Wrapped',
+  assistant: 'AI Assistant',
 };
 
 export function AppHeader() {

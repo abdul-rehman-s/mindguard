@@ -59,3 +59,25 @@ tool-results/
 # Skills directory
 /skills/download/
 agent-ctx/
+
+# Temporary / generated files
+preview-check.png
+*.screenshot.png
+*.snapshot.png
+
+# Nested node_modules
+electron/node_modules/
+mini-services/*/node_modules/
+
+# Build caches
+node_modules/.cache/
+
+# Python caches
+__pycache__/
+*.pyc
+
+# Test artifacts
+tests/
+
+# Server helper scripts
+start-server.sh

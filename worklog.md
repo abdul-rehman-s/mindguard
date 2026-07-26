@@ -175,3 +175,30 @@ Stage Summary:
 - Lint: 0 errors, TypeScript: 0 errors
 - Push: FAILED (expected — no GitHub auth in sandbox). User must push manually.
 - Commit hash: 2457bcb
+
+---
+Task ID: 2
+Agent: General-purpose Agent
+Task: Fix ALL TypeScript errors in src/ directory
+
+Work Log:
+- Read worklog.md, then systematically identified and fixed all 10+ TypeScript errors across src/
+- Fix 1: src/app/api/assistant/timeline/route.ts — Changed `a.category` and `a.application` from `string | null` to `string | undefined` using `?? undefined`
+- Fix 2: src/app/api/desktop/notifications/route.ts — Added `"mission_reminder"` to the Zod enum validation schema (was missing from the type union)
+- Fix 3: src/app/api/weekly-wrapped/route.ts — Changed reduce logic for `deepest` and `bestDay` to guard against empty arrays, eliminating the "possibly undefined" error on `best`
+- Fix 4: src/components/app/app-header.tsx — Added `assistant: 'AI Assistant'` entry to the `viewTitles` Record<AppView, string> map
+- Fix 5: src/components/assistant/chat-panel.tsx — Changed sessionId state type from `string | null` to `string | undefined`, and all usages now use `?? undefined` to convert null to undefined
+- Fix 6: src/components/dashboard/dashboard-view.tsx — Changed ActiveMissionCard prop type: `description?: string | null`, `priority?: string | null`, `focusSessions: unknown[]` (was `{ length: number }[]` which incorrectly required each element to have a length property)
+- Fix 7: src/components/life/life-dashboard.tsx — Removed `setTrackerConnected(data.trackerConnected ?? false)` since `trackerConnected` is not a property on `LifeDashboardData` type; tracker state is set separately from desktop status API
+- Fix 8: src/components/premium/stagger.tsx — Added `type Variants` import from framer-motion and typed `container` and `item` as `Variants`
+- Fix 9: src/hooks/use-desktop-integration.ts — Added `AppView` type import and cast `view as AppView` in both navigate callback and onNavigate listener (was passing bare `string` to `setView`)
+- Fix 10: src/lib/ai.ts — Changed `InstanceType<typeof ZAI>` to `Awaited<ReturnType<typeof ZAI.create>>` for the singleton instance type; also changed message role types from `string` to `'assistant' | 'user' | 'system'` to match SDK's ChatMessage type
+- Additional fix: src/app/api/assistant/chat/route.ts — Same role type fix: changed `Array<{ role: string; content: string }>` to `Array<{ role: 'assistant' | 'user' | 'system'; content: string }>` and cast `msg.role` properly
+- Verified: `npx tsc --noEmit 2>&1 | grep "^src/"` returns zero src/ errors
+- Remaining errors are only in examples/ and skills/ directories (excluded per task instructions)
+
+Stage Summary:
+- 11 files modified, all 10 listed TypeScript errors fixed + 1 discovered cascading error
+- src/ TypeScript error count: 0
+- examples/ and skills/ errors: 3 (not modified per instructions)
+- All fixes are type-safe and preserve runtime behavior

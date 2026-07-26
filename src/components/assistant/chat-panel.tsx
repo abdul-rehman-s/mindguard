@@ -17,7 +17,7 @@ export const ChatPanel = React.memo(function ChatPanel() {
   const setConversationHistory = useAppStore(s => s.setConversationHistory);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [sessionId, setSessionId] = useState<string | undefined>(undefined);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -41,7 +41,7 @@ export const ChatPanel = React.memo(function ChatPanel() {
       role: 'user' as const,
       content: userMessage,
       timestamp: new Date().toISOString(),
-      sessionId,
+      sessionId: sessionId ?? undefined,
     };
     setConversationHistory([...conversationHistory, tempUserMsg]);
 
@@ -49,13 +49,13 @@ export const ChatPanel = React.memo(function ChatPanel() {
       const res = await fetch('/api/assistant/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: userMessage, sessionId }),
+        body: JSON.stringify({ message: userMessage, sessionId: sessionId ?? undefined }),
       });
 
       if (!res.ok) throw new Error('Chat request failed');
       const data = await res.json();
 
-      setSessionId(data.sessionId);
+      setSessionId(data.sessionId ?? undefined);
 
       // Add AI response
       const aiMsg = {
@@ -63,7 +63,7 @@ export const ChatPanel = React.memo(function ChatPanel() {
         role: 'assistant' as const,
         content: data.response,
         timestamp: new Date().toISOString(),
-        sessionId: data.sessionId,
+        sessionId: data.sessionId ?? undefined,
       };
       setConversationHistory([...conversationHistory, tempUserMsg, aiMsg]);
     } catch (error) {
@@ -72,7 +72,7 @@ export const ChatPanel = React.memo(function ChatPanel() {
         role: 'assistant' as const,
         content: 'Sorry, I encountered an error. Please try again.',
         timestamp: new Date().toISOString(),
-        sessionId,
+        sessionId: sessionId ?? undefined,
       };
       setConversationHistory([...conversationHistory, tempUserMsg, errorMsg]);
     } finally {

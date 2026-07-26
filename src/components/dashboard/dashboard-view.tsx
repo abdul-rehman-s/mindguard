@@ -149,7 +149,7 @@ const ActiveMissionCard = React.memo(function ActiveMissionCard({
   activeMission,
   onNavigate,
 }: {
-  activeMission: { title: string; description?: string; priority?: string; focusSessions: { length: number }[] } | null;
+  activeMission: { title: string; description?: string | null; priority?: string | null; focusSessions: unknown[] } | null;
   onNavigate: (view: 'timer' | 'mission') => void;
 }) {
   if (activeMission) {
