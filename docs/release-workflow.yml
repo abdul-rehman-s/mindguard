@@ -1,0 +1,102 @@
+name: Build & Release MindGuard Desktop
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        id: version
+        shell: bash
+        run: |
+          TAG="${GITHUB_REF#refs/tags/v}"
+          echo "version=$TAG" >> "$GITHUB_OUTPUT"
+          echo "Building version: $TAG"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install Next.js dependencies
+        run: bun install
+
+      - name: Build Next.js app
+        run: bun run build
+
+      - name: Install Electron dependencies
+        working-directory: electron
+        run: |
+          npm install
+          npm run postinstall
+
+      - name: Update version in electron/package.json
+        working-directory: electron
+        shell: bash
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          node -e "
+            const fs = require('fs');
+            const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+            pkg.version = '${VERSION}';
+            fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2));
+            console.log('Updated version to: ${VERSION}');
+          "
+
+      - name: Build TypeScript (Electron)
+        working-directory: electron
+        run: npm run build
+
+      - name: Package Electron app (Windows)
+        working-directory: electron
+        run: npm run dist
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate SHA256 checksums
+        working-directory: electron/dist-electron
+        shell: bash
+        run: |
+          echo "=== Generating SHA256 checksums ==="
+          sha256sum MindGuard-Setup-*.exe MindGuard-Portable-*.exe MindGuard-*.zip latest.yml > sha256-checksums.txt
+          echo "=== Checksums generated ==="
+          cat sha256-checksums.txt
+
+      - name: List build artifacts
+        working-directory: electron/dist-electron
+        shell: bash
+        run: |
+          echo "=== Build Artifacts ==="
+          ls -lah MindGuard-Setup-*.exe MindGuard-Portable-*.exe MindGuard-*.zip latest.yml sha256-checksums.txt
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: MindGuard v${{ steps.version.outputs.version }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          body_path: RELEASE_NOTES.md
+          files: |
+            electron/dist-electron/MindGuard-Setup-*.exe
+            electron/dist-electron/MindGuard-Portable-*.exe
+            electron/dist-electron/MindGuard-*.zip
+            electron/dist-electron/latest.yml
+            electron/dist-electron/sha256-checksums.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
