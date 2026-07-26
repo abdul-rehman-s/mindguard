@@ -92,3 +92,17 @@ export type CreateReflectionInputValidated = z.infer<typeof createReflectionSche
 export type UpdateSettingsInputValidated = z.infer<typeof updateSettingsSchema>;
 export type BatchActivitiesInputValidated = z.infer<typeof batchActivitiesSchema>;
 export type DesktopSettingsInputValidated = z.infer<typeof desktopSettingsSchema>;
+
+export const chatMessageSchema = z.object({
+  message: z.string().min(1, "Message is required").max(2000, "Message is too long"),
+  sessionId: z.string().optional(),
+});
+
+export const createMemorySchema = z.object({
+  type: z.enum(['habit', 'pattern', 'preference', 'insight', 'summary', 'conversation', 'weekly_report', 'streak', 'distraction_pattern', 'best_hours', 'work_preference', 'manual']).optional(),
+  content: z.string().min(1, "Content is required").max(2000, "Content is too long"),
+  importance: z.number().int().min(1).max(10).optional(),
+});
+
+export type ChatMessageInputValidated = z.infer<typeof chatMessageSchema>;
+export type CreateMemoryInputValidated = z.infer<typeof createMemorySchema>;

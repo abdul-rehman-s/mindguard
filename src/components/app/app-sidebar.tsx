@@ -16,6 +16,7 @@ import {
   Gift,
   Monitor,
   CalendarCheck,
+  Bot,
 } from 'lucide-react';
 import { useAppStore } from '@/stores/app-store';
 import { useSession } from 'next-auth/react';
@@ -28,6 +29,7 @@ import type { AppView } from '@/types';
 
 const navItems: { view: AppView; icon: typeof LayoutDashboard; label: string; shortcut: string; section?: string }[] = [
   { view: 'dashboard', icon: LayoutDashboard, label: 'Dashboard', shortcut: 'D' },
+  { view: 'assistant', icon: Bot, label: 'AI Assistant', shortcut: 'A' },
   { view: 'life', icon: Monitor, label: 'Life Dashboard', shortcut: 'L' },
   { view: 'mission', icon: Target, label: 'Mission', shortcut: 'M' },
   { view: 'timer', icon: Timer, label: 'Focus Timer', shortcut: 'T' },

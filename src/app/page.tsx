@@ -19,6 +19,7 @@ import { WrappedView } from '@/components/wrapped/wrapped-view';
 import { DailyReview } from '@/components/review/daily-review';
 import { OnboardingFlow } from '@/components/onboarding/onboarding-flow';
 import { FocusMode } from '@/components/timer/focus-mode';
+import { AssistantView } from '@/components/assistant/assistant-view';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useMounted } from '@/hooks/use-mounted';
@@ -138,6 +139,7 @@ export default function HomePage() {
           {currentView === 'replay' && <ReplayView />}
           {currentView === 'review' && <DailyReview />}
           {currentView === 'wrapped' && <WrappedView />}
+          {currentView === 'assistant' && <AssistantView />}
           {currentView === 'settings' && <SettingsView />}
         </motion.div>
       </AnimatePresence>

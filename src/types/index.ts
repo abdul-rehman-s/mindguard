@@ -18,7 +18,8 @@ export type AppView =
   | "settings"
   | "replay"
   | "review"
-  | "wrapped";
+  | "wrapped"
+  | "assistant";
 
 export type MissionStatus = "active" | "completed" | "deleted";
 export type MissionPriority = "low" | "medium" | "high";
@@ -376,4 +377,111 @@ export interface BehavioralCoachData {
   bestWorkingHours: number[];
   recommendations: string[];
   summary: string;
+}
+
+// ─── MindGuard v5.0 AI Operating System types ───
+
+export type MemoryType = "habit" | "pattern" | "preference" | "insight" | "summary" | "conversation" | "weekly_report" | "streak" | "distraction_pattern" | "best_hours" | "work_preference";
+export type MemorySource = "reflection" | "session" | "activity" | "achievement" | "ai_generated" | "manual";
+
+export interface MemoryItem {
+  id: string;
+  type: MemoryType;
+  content: string;
+  importance: number;
+  score: number;
+  context?: string;
+  source?: MemorySource;
+  sourceId?: string;
+  createdAt: string;
+}
+
+export interface ConversationMessage {
+  id: string;
+  role: "user" | "assistant" | "system";
+  content: string;
+  timestamp: string;
+  sessionId?: string;
+}
+
+export interface ChatRequest {
+  message: string;
+  sessionId?: string;
+}
+
+export interface MorningBriefing {
+  date: string;
+  priorities: { title: string; reason: string; priority: "high" | "medium" | "low" }[];
+  estimatedFocusScore: number;
+  suggestedWorkBlocks: { start: string; end: string; task: string; type: string }[];
+  suggestedBreaks: { time: string; duration: number; reason: string }[];
+  missionOrdering: { missionId: string; title: string; order: number; reason: string }[];
+  predictedDistractions: { time: string; source: string; suggestion: string }[];
+  motivationalSummary: string;
+  weatherNote: string;
+}
+
+export interface EveningReview {
+  date: string;
+  productivityGrade: string;
+  gradeScore: number;
+  achievements: string[];
+  biggestWins: { title: string; description: string }[];
+  biggestMistakes: { title: string; description: string }[];
+  distractions: { source: string; minutes: number; suggestion: string }[];
+  lessonsLearned: string[];
+  suggestions: string[];
+  moodAnalysis: { mood: number | null; trend: string; insight: string };
+  reflectionSummary: string;
+  tomorrowRecommendations: string[];
+}
+
+export interface PredictionResult {
+  burnoutRisk: { level: "low" | "medium" | "high"; probability: number; factors: string[] };
+  missionCompletionProbability: { missionId: string; title: string; probability: number; factors: string[] }[];
+  focusScoreTomorrow: { predicted: number; confidence: number; factors: string[] };
+  weeklyProductivity: { predictedMinutes: number; confidence: number; trend: "up" | "down" | "stable" };
+  streakRisk: { riskLevel: "low" | "medium" | "high"; daysToBreak: number; suggestion: string };
+  bestWorkHours: { hour: number; confidence: number; productiveMinutes: number }[];
+}
+
+export interface AIRecommendation {
+  id: string;
+  type: "break" | "schedule" | "avoid" | "continue" | "habit" | "health" | "focus";
+  title: string;
+  description: string;
+  urgency: "low" | "medium" | "high";
+  dataBased: boolean;
+  supportingData: string;
+  action: string;
+}
+
+export interface AITimelineEntry {
+  time: string;
+  title: string;
+  description: string;
+  type: string;
+  icon: string;
+  duration?: number;
+  category?: string;
+  nextEntry?: string;
+}
+
+export interface KnowledgeGraphNode {
+  id: string;
+  type: string;
+  label: string;
+  data: Record<string, unknown>;
+}
+
+export interface KnowledgeGraphEdge {
+  source: string;
+  target: string;
+  relation: string;
+  weight: number;
+}
+
+export interface KnowledgeGraph {
+  nodes: KnowledgeGraphNode[];
+  edges: KnowledgeGraphEdge[];
 }

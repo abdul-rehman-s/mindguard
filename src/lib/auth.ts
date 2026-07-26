@@ -64,5 +64,5 @@ export const authOptions: NextAuthOptions = {
 };
 
 export async function hashPassword(password: string): Promise<string> {
-  return hash(password, 12);
+  return hash(password, 4);
 }

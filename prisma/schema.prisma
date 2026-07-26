@@ -27,6 +27,8 @@ model User {
   desktopActivities DesktopActivity[]
   desktopSettings   DesktopSettings?
   notifications    Notification[]
+  memories          Memory[]
+  conversations     Conversation[]
 }
 
 model Mission {
@@ -144,4 +146,38 @@ model Notification {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, read])
+}
+
+model Memory {
+  id          String   @id @default(cuid())
+  userId      String
+  type        String   // "habit" | "pattern" | "preference" | "insight" | "summary" | "conversation" | "weekly_report" | "streak" | "distraction_pattern" | "best_hours" | "work_preference"
+  content     String   // the actual memory text
+  importance  Int      @default(5)  // 1-10 scale
+  score       Float    @default(0)  // relevance/decay score
+  context     String?  // JSON: additional metadata about this memory
+  source      String?  // "reflection" | "session" | "activity" | "achievement" | "ai_generated" | "manual"
+  sourceId    String?  // ID of the source entity
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, type])
+  @@index([userId, importance])
+  @@index([userId, createdAt])
+}
+
+model Conversation {
+  id          String   @id @default(cuid())
+  userId      String
+  role        String   // "user" | "assistant" | "system"
+  content     String
+  timestamp   DateTime @default(now())
+  sessionId   String?  // groups messages in same conversation session
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, sessionId])
+  @@index([userId, timestamp])
 }
