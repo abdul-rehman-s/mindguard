@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { AppView, DashboardStats, WeeklyData, FocusModeState, OnboardingData, CoachData, WeeklyWrapped } from "@/types";
+import type { AppView, DashboardStats, WeeklyData, FocusModeState, OnboardingData, CoachData, WeeklyWrapped, LifeDashboardData, DailyReviewData, NotificationItem } from "@/types";
 import type { Mission, FocusSession, DailyReflection, Achievement } from "@prisma/client";
 
 type SafeUser = {
@@ -56,6 +56,17 @@ interface AppState {
 
   wrapped: WeeklyWrapped | null;
   setWrapped: (w: WeeklyWrapped | null) => void;
+
+  lifeData: LifeDashboardData | null;
+  setLifeData: (d: LifeDashboardData | null) => void;
+
+  reviewData: DailyReviewData | null;
+  setReviewData: (d: DailyReviewData | null) => void;
+
+  notifications: NotificationItem[];
+  setNotifications: (n: NotificationItem[]) => void;
+  unreadCount: number;
+  setUnreadCount: (c: number) => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -106,5 +117,15 @@ export const useAppStore = create<AppState>((set) => ({
   wrapped: null,
   setWrapped: (wrapped) => set({ wrapped }),
 
-}));
+  lifeData: null,
+  setLifeData: (lifeData) => set({ lifeData }),
 
+  reviewData: null,
+  setReviewData: (reviewData) => set({ reviewData }),
+
+  notifications: [],
+  setNotifications: (notifications) => set({ notifications }),
+  unreadCount: 0,
+  setUnreadCount: (unreadCount) => set({ unreadCount }),
+
+}));

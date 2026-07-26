@@ -20,10 +20,12 @@ model User {
   createdAt     DateTime          @default(now())
   updatedAt     DateTime          @updatedAt
 
-  missions      Mission[]
-  focusSessions FocusSession[]
-  reflections   DailyReflection[]
-  achievements  Achievement[]
+  missions         Mission[]
+  focusSessions    FocusSession[]
+  reflections      DailyReflection[]
+  achievements     Achievement[]
+  desktopActivities DesktopActivity[]
+  notifications    Notification[]
 }
 
 model Mission {
@@ -84,4 +86,40 @@ model Achievement {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, type])
+}
+
+model DesktopActivity {
+  id            String   @id @default(cuid())
+  userId        String
+  type          String   // "focus" | "idle" | "distracted" | "break" | "deep_work" | "app_usage" | "website_usage"
+  title         String?
+  category      String?  // "coding" | "design" | "communication" | "entertainment" | "research" | "other"
+  duration      Int      // seconds
+  startedAt     DateTime
+  endedAt       DateTime?
+  application   String?  // placeholder: app name from Electron/Tauri
+  website       String?  // placeholder: domain from Electron/Tauri
+  metadata      String?  // JSON string for extensible data
+  createdAt     DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, startedAt])
+  @@index([userId, type])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String   // "idle_alert" | "break_reminder" | "mission_reminder" | "reflection_reminder" | "focus_celebration" | "streak_milestone" | "achievement_unlocked"
+  title     String
+  body      String
+  read      Boolean  @default(false)
+  actionUrl String?  // optional deep link
+  metadata  String?  // JSON for extensible data
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, read])
 }

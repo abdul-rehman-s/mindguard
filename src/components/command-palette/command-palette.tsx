@@ -15,6 +15,8 @@ import {
   Plus,
   RotateCcw,
   Gift,
+  Monitor,
+  CalendarCheck,
 } from 'lucide-react';
 import { useAppStore } from '@/stores/app-store';
 import { cn } from '@/lib/utils';
@@ -43,9 +45,11 @@ type Command = NavCommand | ActionCommand;
 
 const navCommands: NavCommand[] = [
   { type: 'nav', view: 'dashboard', icon: LayoutDashboard, label: 'Dashboard', shortcut: 'G D', keywords: ['home', 'overview', 'stats'] },
+  { type: 'nav', view: 'life', icon: Monitor, label: 'Life Dashboard', shortcut: 'G L', keywords: ['life', 'desktop', 'screen', 'activity', 'laptop'] },
   { type: 'nav', view: 'mission', icon: Target, label: 'Mission', shortcut: 'G M', keywords: ['task', 'goal', 'current', 'focus'] },
   { type: 'nav', view: 'timer', icon: Timer, label: 'Focus Timer', shortcut: 'G T', keywords: ['pomodoro', 'countdown', 'start', 'session'] },
   { type: 'nav', view: 'reflection', icon: BookOpen, label: 'Daily Reflection', shortcut: 'G R', keywords: ['journal', 'review', 'diary', 'log'] },
+  { type: 'nav', view: 'review', icon: CalendarCheck, label: 'Daily Review', shortcut: 'G V', keywords: ['review', 'summary', 'today', 'report'] },
   { type: 'nav', view: 'sessions', icon: Clock, label: 'Session History', shortcut: 'G H', keywords: ['sessions', 'history', 'log', 'past', 'completed'] },
   { type: 'nav', view: 'stats', icon: BarChart3, label: 'Statistics', shortcut: 'G S', keywords: ['analytics', 'charts', 'data'] },
   { type: 'nav', view: 'replay', icon: RotateCcw, label: 'Daily Replay', shortcut: 'G P', keywords: ['replay', 'day', 'history', 'timeline'] },

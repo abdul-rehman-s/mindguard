@@ -7,6 +7,7 @@ import { useAppStore } from '@/stores/app-store';
 import { LandingPage } from '@/components/landing/landing-page';
 import { AppShell } from '@/components/app/app-shell';
 import { DashboardView } from '@/components/dashboard/dashboard-view';
+import { LifeDashboard } from '@/components/life/life-dashboard';
 import { MissionView } from '@/components/mission/mission-view';
 import { TimerView } from '@/components/timer/timer-view';
 import { ReflectionView } from '@/components/reflection/reflection-view';
@@ -15,6 +16,7 @@ import { StatsView } from '@/components/stats/stats-view';
 import { SettingsView } from '@/components/settings/settings-view';
 import { ReplayView } from '@/components/replay/replay-view';
 import { WrappedView } from '@/components/wrapped/wrapped-view';
+import { DailyReview } from '@/components/review/daily-review';
 import { OnboardingFlow } from '@/components/onboarding/onboarding-flow';
 import { FocusMode } from '@/components/timer/focus-mode';
 import { Loader2 } from 'lucide-react';
@@ -27,7 +29,6 @@ export default function HomePage() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const onboardingCheckedRef = useRef(false);
 
-  // Check onboarding status
   useEffect(() => {
     if (status === 'authenticated' && !onboardingCheckedRef.current) {
       onboardingCheckedRef.current = true;
@@ -61,7 +62,6 @@ export default function HomePage() {
 
   const handleOnboardingComplete = () => {
     setShowOnboarding(false);
-    // Refresh session to get updated onboarded flag
     const user = session?.user as Record<string, unknown>;
     if (user) setUser({ ...useAppStore.getState().user!, onboarded: true });
     setView('dashboard');
@@ -90,12 +90,10 @@ export default function HomePage() {
     return <LandingPage />;
   }
 
-  // Show onboarding for first-time users
   if (showOnboarding) {
     return <OnboardingFlow onComplete={handleOnboardingComplete} />;
   }
 
-  // Focus mode overlay
   if (focusMode === 'focus') {
     return (
       <FocusMode
@@ -117,12 +115,14 @@ export default function HomePage() {
           transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
         >
           {currentView === 'dashboard' && <DashboardView />}
+          {currentView === 'life' && <LifeDashboard />}
           {currentView === 'mission' && <MissionView />}
           {currentView === 'timer' && <TimerView />}
           {currentView === 'reflection' && <ReflectionView />}
           {currentView === 'sessions' && <SessionHistoryView />}
           {currentView === 'stats' && <StatsView />}
           {currentView === 'replay' && <ReplayView />}
+          {currentView === 'review' && <DailyReview />}
           {currentView === 'wrapped' && <WrappedView />}
           {currentView === 'settings' && <SettingsView />}
         </motion.div>

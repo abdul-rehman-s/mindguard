@@ -1,6 +1,6 @@
-import type { Mission, FocusSession, DailyReflection, User, Achievement } from "@prisma/client";
+import type { Mission, FocusSession, DailyReflection, User, Achievement, DesktopActivity, Notification } from "@prisma/client";
 
-export type { Mission, FocusSession, DailyReflection, User, Achievement };
+export type { Mission, FocusSession, DailyReflection, User, Achievement, DesktopActivity, Notification };
 
 export type MissionWithSessions = Mission & {
   focusSessions: FocusSession[];
@@ -11,6 +11,7 @@ export type SafeUser = Omit<User, "password">;
 export type AppView =
   | "landing"
   | "dashboard"
+  | "life"
   | "mission"
   | "timer"
   | "reflection"
@@ -18,6 +19,7 @@ export type AppView =
   | "stats"
   | "settings"
   | "replay"
+  | "review"
   | "wrapped";
 
 export type MissionStatus = "active" | "completed" | "deleted";
@@ -119,7 +121,7 @@ export interface TimelineEvent {
   group?: string;
 }
 
-// ─── MindGuard v3.1 new types ───
+// ─── MindGuard v3.1 types ───
 
 export interface CoachData {
   greeting: string;
@@ -213,4 +215,106 @@ export interface WeeklyWrapped {
     reflectionCount: number;
   };
   weekRange?: { start: string; end: string };
+}
+
+// ─── Phase 4: Desktop Intelligence Engine types ───
+
+export interface LifeDashboardData {
+  totalLaptopMinutes: number;
+  productiveMinutes: number;
+  distractedMinutes: number;
+  idleMinutes: number;
+  deepWorkMinutes: number;
+  focusSessions: number;
+  screenTimeMinutes: number;
+  missionCompletionRate: number;
+  attentionScore: number;
+  xp: number;
+  level: number;
+  currentStreak: number;
+  todayFocusMinutes: number;
+  weeklyFocusMinutes: number;
+  hourlyDistribution: { hour: number; minutes: number }[];
+  categoryBreakdown: { category: string; minutes: number; color: string }[];
+  recentActivity: {
+    id: string;
+    type: string;
+    title: string;
+    startedAt: string;
+    duration: number;
+  }[];
+}
+
+export interface DailyReviewData {
+  date: string;
+  focusSummary: {
+    totalMinutes: number;
+    sessionCount: number;
+    longestSession: number;
+    avgSessionLength: number;
+    deepWorkSessions: number;
+  };
+  missionSummary: {
+    completed: number;
+    created: number;
+    active: number;
+  };
+  reflection: {
+    written: boolean;
+    mood: number | null;
+    energy: number | null;
+    distraction: string | null;
+    wentWell: string | null;
+  };
+  laptopSummary: {
+    totalMinutes: number;
+    productiveMinutes: number;
+    distractedMinutes: number;
+    idleMinutes: number;
+  };
+  distractionSummary: {
+    totalDistractedMinutes: number;
+    topDistractions: { title: string; minutes: number }[];
+    peakDistractionHour: number | null;
+  };
+  xpGained: number;
+  achievementsUnlocked: { type: string; title: string; icon: string }[];
+  timeline: {
+    time: string;
+    event: string;
+    type: string;
+    duration?: number;
+  }[];
+  aiRecommendation: string;
+  hourlyChart: { hour: number; minutes: number }[];
+  weekComparison: {
+    todayMinutes: number;
+    weekAvgMinutes: number;
+    change: number;
+  };
+}
+
+export interface NotificationItem {
+  id: string;
+  type: string;
+  title: string;
+  body: string;
+  read: boolean;
+  actionUrl?: string;
+  createdAt: string;
+}
+
+export type ActivityType = "focus" | "idle" | "distracted" | "break" | "deep_work" | "app_usage" | "website_usage";
+export type ActivityCategory = "coding" | "design" | "communication" | "entertainment" | "research" | "other";
+
+export interface CreateActivityInput {
+  type: ActivityType;
+  title?: string;
+  category?: ActivityCategory;
+  duration: number;
+  startedAt: string;
+  endedAt?: string;
+  application?: string;
+  website?: string;
+  metadata?: string;
 }
