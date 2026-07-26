@@ -4,7 +4,7 @@ import { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Play, Check, ShieldOff, Droplets, BellOff, Crosshair } from 'lucide-react';
 import { toast } from 'sonner';
-import { cn } from '@/lib/utils';
+import { cn, formatDurationCompact } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 
 const TOTAL_ITEMS = 4;
@@ -36,13 +36,8 @@ export function MissionLaunch({ missionTitle, duration, onStart, onCancel }: Mis
   const allChecked = checkedCount === TOTAL_ITEMS;
 
   const toggleCheck = useCallback((id: string) => {
-    if (countdown !== null) return; // don't allow changes during countdown
-    setChecks((prev) => {
-      const next = !prev[id];
-      // Console log for audit
-      console.log(`[MissionLaunch] ${next ? '✓' : '✗'} ${id} → ${CHECKLIST_ITEMS.find(i => i.id === id)?.label}`);
-      return { ...prev, [id]: next };
-    });
+    if (countdown !== null) return;
+    setChecks((prev) => ({ ...prev, [id]: !prev[id] }));
   }, [countdown]);
 
   const handleStart = useCallback(() => {
@@ -50,7 +45,6 @@ export function MissionLaunch({ missionTitle, duration, onStart, onCancel }: Mis
       toast.error('Complete your setup first');
       return;
     }
-    console.log('[MissionLaunch] 🚀 All checks passed. Starting countdown...');
     setCountdown(3);
     const timer = setInterval(() => {
       setCountdown((prev) => {
@@ -65,18 +59,8 @@ export function MissionLaunch({ missionTitle, duration, onStart, onCancel }: Mis
   }, [allChecked, onStart]);
 
   const handleCancel = useCallback(() => {
-    console.log('[MissionLaunch] ❌ Launch cancelled');
     onCancel();
   }, [onCancel]);
-
-  const formatDuration = (mins: number) => {
-    if (mins >= 60) {
-      const h = Math.floor(mins / 60);
-      const m = mins % 60;
-      return m > 0 ? `${h}h ${m}m` : `${h}h`;
-    }
-    return `${mins} min`;
-  };
 
   return (
     <motion.div
@@ -84,9 +68,12 @@ export function MissionLaunch({ missionTitle, duration, onStart, onCancel }: Mis
       animate={{ opacity: 1 }}
       exit={{ opacity: 0, scale: 0.95 }}
       className="fixed inset-0 z-[200] flex flex-col items-center justify-center bg-zinc-950"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Mission launch checklist"
     >
       {/* Background glow */}
-      <div className="pointer-events-none absolute left-1/2 top-1/3 -translate-x-1/2 -translate-y-1/2 h-[400px] w-[400px] rounded-full bg-emerald-500/[0.06] blur-[120px]" />
+      <div className="pointer-events-none absolute left-1/2 top-1/3 -translate-x-1/2 -translate-y-1/2 h-[400px] w-[400px] rounded-full bg-emerald-500/[0.06] blur-[120px]" aria-hidden="true" />
 
       {/* Animated glow behind button when all checked */}
       <AnimatePresence>
@@ -97,6 +84,7 @@ export function MissionLaunch({ missionTitle, duration, onStart, onCancel }: Mis
             exit={{ opacity: 0, scale: 0.8 }}
             transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
             className="pointer-events-none absolute bottom-[18%] left-1/2 -translate-x-1/2 h-32 w-72 rounded-full bg-emerald-500/30 blur-[60px]"
+            aria-hidden="true"
           />
         )}
       </AnimatePresence>
@@ -109,16 +97,17 @@ export function MissionLaunch({ missionTitle, duration, onStart, onCancel }: Mis
           exit={{ scale: 2, opacity: 0 }}
           transition={{ duration: 0.3 }}
           className="flex items-center justify-center"
+          aria-live="assertive"
         >
           <span
-            className="font-mono text-9xl font-light text-emerald-400 tabular-nums"
+            className="font-mono text-6xl font-light text-emerald-400 tabular-nums sm:text-7xl md:text-9xl"
             style={{ textShadow: '0 0 60px rgba(16,185,129,0.5)' }}
           >
             {countdown}
           </span>
         </motion.div>
       ) : (
-        <div className="relative z-10 flex w-full max-w-sm flex-col items-center px-6">
+        <div className="relative z-10 flex w-full max-w-sm flex-col items-center px-4 sm:px-6">
           {/* Mission title badge */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
@@ -126,7 +115,7 @@ export function MissionLaunch({ missionTitle, duration, onStart, onCancel }: Mis
             transition={{ delay: 0.1 }}
             className="mb-2 flex items-center gap-2 rounded-full border border-emerald-500/15 bg-emerald-500/[0.06] px-4 py-1.5"
           >
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" aria-hidden="true" />
             <span className="text-xs font-medium text-emerald-400/90">
               {missionTitle || 'Free Focus'}
             </span>
@@ -137,9 +126,10 @@ export function MissionLaunch({ missionTitle, duration, onStart, onCancel }: Mis
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.15 }}
-            className="mb-1 mt-4 text-4xl font-semibold tracking-tight text-zinc-100 tabular-nums"
+            className="mb-1 mt-4 text-3xl font-semibold tracking-tight text-zinc-100 tabular-nums sm:text-4xl"
+            aria-live="polite"
           >
-            {formatDuration(duration)}
+            {formatDurationCompact(duration * 60)}
           </motion.h2>
           <motion.p
             initial={{ opacity: 0 }}
@@ -158,7 +148,13 @@ export function MissionLaunch({ missionTitle, duration, onStart, onCancel }: Mis
             className="mb-5 flex items-center gap-3"
           >
             {/* Progress bar */}
-            <div className="h-1 w-24 rounded-full bg-white/[0.06] overflow-hidden">
+            <div className="h-1 w-24 rounded-full bg-white/[0.06] overflow-hidden"
+              role="progressbar"
+              aria-valuenow={checkedCount}
+              aria-valuemin={0}
+              aria-valuemax={TOTAL_ITEMS}
+              aria-label="Setup progress"
+            >
               <motion.div
                 className={cn(
                   'h-full rounded-full transition-all duration-500 ease-out',
@@ -171,7 +167,7 @@ export function MissionLaunch({ missionTitle, duration, onStart, onCancel }: Mis
             <span className={cn(
               'text-xs font-medium tabular-nums transition-colors duration-300',
               allChecked ? 'text-emerald-400' : 'text-zinc-500'
-            )}>
+            )} aria-live="polite">
               {checkedCount}/{TOTAL_ITEMS} Ready
             </span>
           </motion.div>
@@ -194,6 +190,8 @@ export function MissionLaunch({ missionTitle, duration, onStart, onCancel }: Mis
                   transition={{ delay: 0.3 + idx * 0.06 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={() => toggleCheck(item.id)}
+                  aria-label={`${isChecked ? 'Completed' : 'Not completed'}: ${item.label}`}
+                  aria-pressed={isChecked}
                   className={cn(
                     'group flex w-full items-center gap-3 rounded-xl border px-4 py-3.5 text-left text-sm transition-all duration-300',
                     isChecked
@@ -209,6 +207,7 @@ export function MissionLaunch({ missionTitle, duration, onStart, onCancel }: Mis
                         ? 'border-emerald-500 bg-emerald-500/20 shadow-sm shadow-emerald-500/20'
                         : 'border-white/[0.12] group-hover:border-white/[0.2]'
                     )}
+                    aria-hidden="true"
                   >
                     <AnimatePresence mode="wait">
                       {isChecked && (
@@ -244,6 +243,7 @@ export function MissionLaunch({ missionTitle, duration, onStart, onCancel }: Mis
                       initial={{ scale: 0 }}
                       animate={{ scale: 1 }}
                       className="ml-auto"
+                      aria-hidden="true"
                     >
                       <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
                     </motion.div>
@@ -263,6 +263,7 @@ export function MissionLaunch({ missionTitle, duration, onStart, onCancel }: Mis
             <Button
               onClick={handleStart}
               disabled={!allChecked}
+              aria-label="Start mission"
               className={cn(
                 'relative w-full gap-2 h-14 text-base font-medium transition-all duration-500',
                 allChecked
@@ -285,15 +286,17 @@ export function MissionLaunch({ missionTitle, duration, onStart, onCancel }: Mis
                     ],
                   }}
                   transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+                  aria-hidden="true"
                 />
               )}
-              <Play className={cn('h-5 w-5', allChecked ? 'text-white' : 'text-zinc-500')} />
+              <Play className={cn('h-5 w-5', allChecked ? 'text-white' : 'text-zinc-500')} aria-hidden="true" />
               <span>Start Mission</span>
             </Button>
 
             <Button
               variant="ghost"
               onClick={handleCancel}
+              aria-label="Cancel mission launch"
               className="w-full text-zinc-500 hover:text-zinc-200 hover:bg-white/[0.03]"
             >
               Cancel

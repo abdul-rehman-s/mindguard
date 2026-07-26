@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getAuthUserId } from '@/lib/auth-utils';
 import { db } from '@/lib/db';
+import { findBestHour } from '@/lib/analytics';
+import { logError } from '@/lib/logger';
 import {
   format,
   startOfDay,
@@ -9,15 +10,6 @@ import {
   parseISO,
   isValid,
 } from 'date-fns';
-
-async function getUserId(): Promise<string | NextResponse> {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-  const user = session.user as Record<string, unknown>;
-  return user.id as string;
-}
 
 type ReplayEvent = {
   id: string;
@@ -30,8 +22,9 @@ type ReplayEvent = {
 };
 
 export async function GET(request: NextRequest) {
-  const userId = await getUserId();
-  if (userId instanceof NextResponse) return userId;
+  const userIdOr401 = await getAuthUserId();
+  if (userIdOr401 instanceof NextResponse) return userIdOr401;
+  const userId = userIdOr401;
 
   const { searchParams } = new URL(request.url);
   const dateParam = searchParams.get('date');
@@ -157,22 +150,11 @@ export async function GET(request: NextRequest) {
     );
     const longestSessionMinutes = Math.round(longestSession / 60);
 
-    // Best hour = hour with most focus minutes that day
-    const hourMinutes = new Array(24).fill(0);
-    for (const s of focusSessions) {
-      hourMinutes[new Date(s.startedAt).getHours()] += s.duration;
-    }
-    let bestHour = -1;
-    let bestHourMinutes = 0;
-    for (let h = 0; h < 24; h++) {
-      if (hourMinutes[h] > bestHourMinutes) {
-        bestHourMinutes = hourMinutes[h];
-        bestHour = h;
-      }
-    }
+    // Best hour using shared helper
+    const bestHourResult = findBestHour(focusSessions);
     const bestHourLabel =
-      bestHour >= 0
-        ? format(new Date().setHours(bestHour, 0, 0, 0), 'h a')
+      bestHourResult !== null
+        ? format(new Date().setHours(bestHourResult, 0, 0, 0), 'h a')
         : null;
 
     return NextResponse.json({
@@ -188,7 +170,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (e) {
-    console.error('[replay] error', e);
+    logError("replay", "Failed to fetch replay data", e);
     return NextResponse.json(
       { error: 'Failed to fetch replay data' },
       { status: 500 }

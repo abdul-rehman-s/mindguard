@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   BookOpen,
@@ -18,7 +18,9 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent } from '@/components/ui/card';
 import { useAppStore } from '@/stores/app-store';
-import { cn } from '@/lib/utils';
+import { cn, formatDateDisplay, formatTimeDisplay } from '@/lib/utils';
+import { staggerContainer, staggerItem } from '@/lib/animations';
+import { toast } from 'sonner';
 import type { DailyReflection } from '@/types';
 
 const questions = [
@@ -45,21 +47,11 @@ const questions = [
   },
 ];
 
-const container = {
-  hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.1 } },
-};
-
-const item = {
-  hidden: { opacity: 0, y: 16 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.5 } },
-};
-
 const MAX_CHARS = 500;
 
-function StepIndicator({ currentStep }: { currentStep: number }) {
+const StepIndicator = React.memo(function StepIndicator({ currentStep }: { currentStep: number }) {
   return (
-    <div className="mb-8 flex items-center gap-0">
+    <div className="mb-8 flex items-center gap-0" aria-label={`Step ${currentStep + 1} of 3`}>
       {questions.map((q, idx) => {
         const Icon = q.icon;
         const isActive = idx <= currentStep;
@@ -68,9 +60,7 @@ function StepIndicator({ currentStep }: { currentStep: number }) {
           <div key={q.id} className="flex items-center">
             <div className="flex flex-col items-center">
               <motion.div
-                animate={{
-                  scale: isCurrent ? 1.05 : 1,
-                }}
+                animate={{ scale: isCurrent ? 1.05 : 1 }}
                 transition={{ duration: 0.2 }}
                 className={cn(
                   'flex h-9 w-9 items-center justify-center rounded-xl transition-all duration-300',
@@ -95,30 +85,45 @@ function StepIndicator({ currentStep }: { currentStep: number }) {
               <div className={cn(
                 'mx-3 h-[2px] w-12 rounded-full transition-colors duration-300',
                 idx < currentStep ? 'bg-emerald-500/30' : 'bg-white/[0.04]'
-              )} />
+              )} aria-hidden="true" />
             )}
           </div>
         );
       })}
     </div>
   );
-}
+});
 
-function formatDate(dateStr: string): string {
-  const date = new Date(dateStr);
-  const now = new Date();
-  const isToday = date.toDateString() === now.toDateString();
-  const yesterday = new Date(now);
-  yesterday.setDate(yesterday.getDate() - 1);
-  const isYesterday = date.toDateString() === yesterday.toDateString();
-
-  if (isToday) return 'Today';
-  if (isYesterday) return 'Yesterday';
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined });
-}
+const ReflectionCard = React.memo(function ReflectionCard({ reflection }: { reflection: DailyReflection }) {
+  const dateLabel = formatDateDisplay(reflection.date, 'MMM d, yyyy');
+  return (
+    <Card className="card-glow border-white/[0.04] bg-white/[0.01]">
+      <CardContent className="p-4">
+        <p className="mb-3 text-[11px] font-medium uppercase tracking-wider text-zinc-600">
+          {dateLabel}
+        </p>
+        <div className="flex flex-col gap-2.5">
+          <div>
+            <span className="text-[10px] font-medium uppercase tracking-wider text-zinc-600">Distractions</span>
+            <p className="mt-0.5 text-xs leading-relaxed text-zinc-400 line-clamp-2">{reflection.distraction}</p>
+          </div>
+          <div>
+            <span className="text-[10px] font-medium uppercase tracking-wider text-zinc-600">Went Well</span>
+            <p className="mt-0.5 text-xs leading-relaxed text-zinc-400 line-clamp-2">{reflection.wentWell}</p>
+          </div>
+          <div>
+            <span className="text-[10px] font-medium uppercase tracking-wider text-zinc-600">Tomorrow</span>
+            <p className="mt-0.5 text-xs leading-relaxed text-emerald-400/70 line-clamp-1">{reflection.tomorrowMission}</p>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+});
 
 export function ReflectionView() {
-  const { todayReflection, setTodayReflection } = useAppStore();
+  const todayReflection = useAppStore(s => s.todayReflection);
+  const setTodayReflection = useAppStore(s => s.setTodayReflection);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -150,6 +155,7 @@ export function ReflectionView() {
       setReflections(data.reflections || []);
     } catch {
       setError('Failed to load reflection');
+      toast.error('Failed to load reflection');
     } finally {
       setLoading(false);
     }
@@ -174,15 +180,19 @@ export function ReflectionView() {
         }),
       });
       if (!res.ok) throw new Error('Failed to save');
+      const postData = await res.json();
+      // Use POST response data instead of refetch to avoid double fetch
+      if (postData.todayReflection) {
+        setTodayReflection(postData.todayReflection);
+      }
       setSaved(true);
-      // Refresh reflections list
-      const getRes = await fetch('/api/reflections');
-      if (getRes.ok) {
-        const data = await getRes.json();
-        setReflections(data.reflections || []);
+      // Only update the list if POST returns reflections
+      if (postData.reflections) {
+        setReflections(postData.reflections);
       }
     } catch {
       setError('Failed to save reflection');
+      toast.error('Failed to save reflection');
     } finally {
       setSaving(false);
     }
@@ -205,16 +215,16 @@ export function ReflectionView() {
   if (loading) {
     return (
       <div className="flex h-64 items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-zinc-500" />
+        <Loader2 className="h-6 w-6 animate-spin text-zinc-500" aria-label="Loading reflection data" />
       </div>
     );
   }
 
   return (
-    <motion.div variants={container} initial="hidden" animate="visible">
-      <motion.div variants={item} className="mb-2 pt-2">
+    <motion.div variants={staggerContainer} initial="hidden" animate="visible" aria-label="Daily reflection">
+      <motion.div variants={staggerItem} className="mb-2 pt-2">
         <div className="flex items-center gap-2 mb-1">
-          <BookOpen className="h-5 w-5 text-emerald-400" />
+          <BookOpen className="h-5 w-5 text-emerald-400" aria-hidden="true" />
           <h2 className="text-[1.65rem] font-semibold tracking-[-0.02em] text-zinc-100">Daily Reflection</h2>
         </div>
         <p className="mt-1.5 text-sm text-zinc-500">
@@ -223,13 +233,13 @@ export function ReflectionView() {
       </motion.div>
 
       {/* Step Progress Indicator */}
-      <motion.div variants={item}>
+      <motion.div variants={staggerItem}>
         <StepIndicator currentStep={currentStep >= 0 ? currentStep : completedSteps - 1} />
       </motion.div>
 
       {error && (
-        <motion.div variants={item} className="mb-4 flex items-center gap-2 rounded-lg border border-red-500/20 bg-red-500/5 px-4 py-2.5">
-          <AlertCircle className="h-4 w-4 text-red-400" />
+        <motion.div variants={staggerItem} className="mb-4 flex items-center gap-2 rounded-lg border border-red-500/20 bg-red-500/5 px-4 py-2.5" role="alert" aria-live="polite">
+          <AlertCircle className="h-4 w-4 text-red-400" aria-hidden="true" />
           <span className="text-xs text-red-400">{error}</span>
         </motion.div>
       )}
@@ -240,17 +250,17 @@ export function ReflectionView() {
           const charCount = form[q.id as keyof typeof form].length;
           const isNearLimit = charCount > MAX_CHARS * 0.8;
           return (
-            <motion.div key={q.id} variants={item}>
+            <motion.div key={q.id} variants={staggerItem}>
               <Card className={cn(
                 'card-glow border-white/[0.06] bg-white/[0.02] transition-colors duration-200',
                 activeField === q.id && 'border-emerald-500/15'
               )}>
-                <CardContent className="p-6">
+                <CardContent className="p-4 sm:p-6">
                   <div className="mb-3 flex items-center gap-3">
                     <div className={cn(
                       'flex h-8 w-8 items-center justify-center rounded-lg transition-colors duration-200',
                       activeField === q.id ? 'bg-emerald-500/15' : 'bg-emerald-500/10'
-                    )}>
+                    )} aria-hidden="true">
                       <Icon className={cn(
                         'h-4 w-4 transition-colors duration-200',
                         activeField === q.id ? 'text-emerald-400' : 'text-emerald-400/80'
@@ -271,13 +281,14 @@ export function ReflectionView() {
                       onChange={(e) => handleChange(q.id, e.target.value)}
                       onFocus={() => setActiveField(q.id)}
                       onBlur={() => setActiveField(null)}
+                      aria-label={q.question}
                       className="border-white/[0.06] bg-white/[0.03] text-sm text-zinc-200 placeholder:text-zinc-600 focus-visible:border-emerald-500/40 focus-visible:ring-emerald-500/20 min-h-[100px] resize-none pr-14"
                       required
                     />
                     <span className={cn(
                       'absolute bottom-3 right-3 text-[10px] tabular-nums transition-colors',
                       isNearLimit ? 'text-amber-400/60' : 'text-zinc-700'
-                    )}>
+                    )} aria-live="polite">
                       {charCount}/{MAX_CHARS}
                     </span>
                   </div>
@@ -287,7 +298,7 @@ export function ReflectionView() {
           );
         })}
 
-        <motion.div variants={item} className="flex items-center gap-3">
+        <motion.div variants={staggerItem} className="flex items-center gap-3">
           <Button
             type="submit"
             disabled={
@@ -296,12 +307,13 @@ export function ReflectionView() {
               !form.wentWell.trim() ||
               !form.tomorrowMission.trim()
             }
+            aria-label={saving ? 'Saving reflection' : saved ? 'Update reflection' : 'Save reflection'}
             className="btn-glow bg-gradient-to-b from-emerald-500 to-emerald-600 text-white shadow-lg shadow-emerald-500/15 hover:from-emerald-400 hover:to-emerald-500 hover:shadow-emerald-500/25"
           >
             {saving ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
             ) : saved ? (
-              <Check className="mr-2 h-4 w-4" />
+              <Check className="mr-2 h-4 w-4" aria-hidden="true" />
             ) : null}
             {saving ? 'Saving...' : saved ? 'Update Reflection' : 'Save Reflection'}
           </Button>
@@ -310,6 +322,7 @@ export function ReflectionView() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               className="text-xs text-emerald-400"
+              aria-live="polite"
             >
               Saved for today
             </motion.span>
@@ -319,12 +332,14 @@ export function ReflectionView() {
 
       {/* Reflection History */}
       {historyReflections.length > 0 && (
-        <motion.div variants={item} className="mt-10">
+        <motion.div variants={staggerItem} className="mt-10">
           <button
             onClick={() => setShowHistory(!showHistory)}
+            aria-label={showHistory ? 'Hide past reflections' : 'Show past reflections'}
+            aria-expanded={showHistory}
             className="mb-4 flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-zinc-500 transition-colors hover:text-zinc-300"
           >
-            <History className="h-3.5 w-3.5" />
+            <History className="h-3.5 w-3.5" aria-hidden="true" />
             Past Reflections
             <span className="rounded-full bg-white/[0.06] px-1.5 py-0.5 text-[10px] tabular-nums">{historyReflections.length}</span>
             {showHistory ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
@@ -336,30 +351,10 @@ export function ReflectionView() {
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
                 exit={{ opacity: 0, height: 0 }}
-                className="flex flex-col gap-3 overflow-hidden"
+                className="flex flex-col gap-3 overflow-hidden max-h-96 overflow-y-auto"
               >
                 {historyReflections.slice(0, 7).map((r) => (
-                  <Card key={r.id} className="card-glow border-white/[0.04] bg-white/[0.01]">
-                    <CardContent className="p-4">
-                      <p className="mb-3 text-[11px] font-medium uppercase tracking-wider text-zinc-600">
-                        {formatDate(r.date)}
-                      </p>
-                      <div className="flex flex-col gap-2.5">
-                        <div>
-                          <span className="text-[10px] font-medium uppercase tracking-wider text-zinc-600">Distractions</span>
-                          <p className="mt-0.5 text-xs leading-relaxed text-zinc-400 line-clamp-2">{r.distraction}</p>
-                        </div>
-                        <div>
-                          <span className="text-[10px] font-medium uppercase tracking-wider text-zinc-600">Went Well</span>
-                          <p className="mt-0.5 text-xs leading-relaxed text-zinc-400 line-clamp-2">{r.wentWell}</p>
-                        </div>
-                        <div>
-                          <span className="text-[10px] font-medium uppercase tracking-wider text-zinc-600">Tomorrow</span>
-                          <p className="mt-0.5 text-xs leading-relaxed text-emerald-400/70 line-clamp-1">{r.tomorrowMission}</p>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
+                  <ReflectionCard key={r.id} reflection={r} />
                 ))}
               </motion.div>
             )}

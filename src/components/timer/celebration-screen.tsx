@@ -1,12 +1,14 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Trophy, Flame, Clock, Zap, BookOpen, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAppStore } from '@/stores/app-store';
+import { formatDuration } from '@/lib/utils';
 
-const confettiParticles = Array.from({ length: 60 }, (_, i) => ({
+// Reduced confetti particles: 60 → 30 for performance
+const confettiParticles = Array.from({ length: 30 }, (_, i) => ({
   id: i,
   x: (Math.random() - 0.5) * 400,
   y: -(Math.random() * 300 + 100),
@@ -17,14 +19,6 @@ const confettiParticles = Array.from({ length: 60 }, (_, i) => ({
   shape: i % 3 === 0 ? 'circle' : i % 3 === 1 ? 'rect' : 'diamond',
 }));
 
-function formatDuration(seconds: number): string {
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const s = seconds % 60;
-  if (h > 0) return `${h}h ${m}m`;
-  return `${m}m ${s}s`;
-}
-
 interface CelebrationScreenProps {
   duration: number;
   missionTitle: string | null;
@@ -32,7 +26,8 @@ interface CelebrationScreenProps {
 }
 
 export function CelebrationScreen({ duration, missionTitle, onExit }: CelebrationScreenProps) {
-  const { stats, setView } = useAppStore();
+  const stats = useAppStore(s => s.stats);
+  const setView = useAppStore(s => s.setView);
   const [showContent, setShowContent] = useState(false);
 
   useEffect(() => {
@@ -44,9 +39,12 @@ export function CelebrationScreen({ duration, missionTitle, onExit }: Celebratio
     <motion.div
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
       className="fixed inset-0 z-[200] flex flex-col items-center justify-center bg-zinc-950 overflow-hidden"
+      role="alert"
+      aria-live="assertive"
+      aria-label="Session complete celebration"
     >
       {/* Confetti */}
-      <div className="pointer-events-none absolute inset-0">
+      <div className="pointer-events-none absolute inset-0" aria-hidden="true">
         {confettiParticles.map((p) => (
           <motion.div
             key={p.id}
@@ -75,6 +73,7 @@ export function CelebrationScreen({ duration, missionTitle, onExit }: Celebratio
         className="pointer-events-none absolute h-[500px] w-[500px] rounded-full bg-emerald-500/[0.1] blur-[150px]"
         animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.5, 0.3] }}
         transition={{ duration: 3, repeat: Infinity }}
+        aria-hidden="true"
       />
 
       {showContent && (
@@ -88,28 +87,28 @@ export function CelebrationScreen({ duration, missionTitle, onExit }: Celebratio
             <Trophy className="h-10 w-10 text-emerald-400" />
           </motion.div>
 
-          <h2 className="mb-2 text-3xl font-semibold tracking-tight text-zinc-50">Mission Complete</h2>
+          <h2 className="mb-2 text-2xl font-semibold tracking-tight text-zinc-50 sm:text-3xl">Mission Complete</h2>
           <p className="mb-8 text-sm text-zinc-400">Great work staying focused.</p>
 
           {/* Stats grid */}
           <div className="mb-10 grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <div className="flex flex-col items-center rounded-xl border border-white/[0.06] bg-white/[0.02] px-5 py-4">
-              <Clock className="mb-2 h-4 w-4 text-emerald-400/70" />
-              <span className="text-lg font-semibold text-zinc-100 tabular-nums">{formatDuration(duration)}</span>
+            <div className="flex flex-col items-center rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-4 sm:px-5">
+              <Clock className="mb-2 h-4 w-4 text-emerald-400/70" aria-hidden="true" />
+              <span className="text-lg font-semibold text-zinc-100 tabular-nums" aria-live="polite">{formatDuration(duration)}</span>
               <span className="mt-0.5 text-[10px] text-zinc-500">Focus Time</span>
             </div>
-            <div className="flex flex-col items-center rounded-xl border border-white/[0.06] bg-white/[0.02] px-5 py-4">
-              <Zap className="mb-2 h-4 w-4 text-emerald-400/70" />
-              <span className="text-lg font-semibold text-zinc-100 tabular-nums">{stats?.focusScore || 0}</span>
+            <div className="flex flex-col items-center rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-4 sm:px-5">
+              <Zap className="mb-2 h-4 w-4 text-emerald-400/70" aria-hidden="true" />
+              <span className="text-lg font-semibold text-zinc-100 tabular-nums" aria-live="polite">{stats?.focusScore || 0}</span>
               <span className="mt-0.5 text-[10px] text-zinc-500">Focus Score</span>
             </div>
-            <div className="flex flex-col items-center rounded-xl border border-white/[0.06] bg-white/[0.02] px-5 py-4">
-              <Flame className="mb-2 h-4 w-4 text-emerald-400/70" />
-              <span className="text-lg font-semibold text-zinc-100 tabular-nums">{stats?.currentStreak || 0}</span>
+            <div className="flex flex-col items-center rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-4 sm:px-5">
+              <Flame className="mb-2 h-4 w-4 text-emerald-400/70" aria-hidden="true" />
+              <span className="text-lg font-semibold text-zinc-100 tabular-nums" aria-live="polite">{stats?.currentStreak || 0}</span>
               <span className="mt-0.5 text-[10px] text-zinc-500">Day Streak</span>
             </div>
-            <div className="flex flex-col items-center rounded-xl border border-white/[0.06] bg-white/[0.02] px-5 py-4">
-              <Trophy className="mb-2 h-4 w-4 text-emerald-400/70" />
+            <div className="flex flex-col items-center rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-4 sm:px-5">
+              <Trophy className="mb-2 h-4 w-4 text-emerald-400/70" aria-hidden="true" />
               <span className="text-sm font-medium text-zinc-100 truncate max-w-[100px]">{missionTitle || 'Free Focus'}</span>
               <span className="mt-0.5 text-[10px] text-zinc-500">Mission</span>
             </div>
@@ -120,18 +119,21 @@ export function CelebrationScreen({ duration, missionTitle, onExit }: Celebratio
             <Button
               onClick={() => { setView('reflection'); onExit(); }}
               variant="outline" className="gap-2 border-white/[0.08] bg-white/[0.02] text-zinc-300 hover:bg-white/[0.04] hover:text-zinc-100"
+              aria-label="Go to reflection"
             >
               <BookOpen className="h-4 w-4" /> Reflect
             </Button>
             <Button
               onClick={() => { setView('timer'); onExit(); }}
               className="gap-2 bg-gradient-to-b from-emerald-500 to-emerald-600 text-white shadow-lg shadow-emerald-500/20 hover:from-emerald-400 hover:to-emerald-500"
+              aria-label="Start another session"
             >
               Start Another <ArrowRight className="h-4 w-4" />
             </Button>
             <Button
               onClick={() => { setView('dashboard'); onExit(); }}
               variant="ghost" className="text-zinc-500 hover:text-zinc-200"
+              aria-label="Return to dashboard"
             >
               Dashboard
             </Button>

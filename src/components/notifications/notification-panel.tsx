@@ -18,10 +18,13 @@ import {
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAppStore } from '@/stores/app-store';
-import { cn } from '@/lib/utils';
-import type { NotificationItem } from '@/types';
+import { cn, timeAgo } from '@/lib/utils';
+import type { NotificationItem, AppView } from '@/types';
 
-const EASE = [0.25, 0.1, 0.25, 1] as [number, number, number, number];
+const VALID_ACTION_VIEWS: AppView[] = [
+  'landing', 'dashboard', 'life', 'mission', 'timer', 'reflection',
+  'sessions', 'stats', 'settings', 'replay', 'review', 'wrapped',
+];
 
 const ICON_MAP: Record<string, typeof Bell> = {
   idle_alert: Coffee,
@@ -43,18 +46,12 @@ const TYPE_COLORS: Record<string, string> = {
   achievement_unlocked: 'text-amber-400 bg-amber-500/10',
 };
 
-function timeAgo(dateStr: string): string {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const m = Math.floor(diff / 60000);
-  if (m < 1) return 'Just now';
-  if (m < 60) return `${m}m ago`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h ago`;
-  return `${Math.floor(h / 24)}d ago`;
-}
-
 export function NotificationPanel() {
-  const { notifications, setNotifications, unreadCount, setUnreadCount, setView } = useAppStore();
+  const notifications = useAppStore(s => s.notifications);
+  const setNotifications = useAppStore(s => s.setNotifications);
+  const unreadCount = useAppStore(s => s.unreadCount);
+  const setUnreadCount = useAppStore(s => s.setUnreadCount);
+  const setView = useAppStore(s => s.setView);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -88,8 +85,9 @@ export function NotificationPanel() {
       setNotifications(notifications.map((n) => n.id === notif.id ? { ...n, read: true } : n));
       setUnreadCount(Math.max(0, unreadCount - 1));
     }
-    if (notif.actionUrl) {
-      setView(notif.actionUrl as 'timer' | 'reflection' | 'dashboard');
+    // Validate actionUrl before using setView — only valid AppView values
+    if (notif.actionUrl && VALID_ACTION_VIEWS.includes(notif.actionUrl as AppView)) {
+      setView(notif.actionUrl as AppView);
       setOpen(false);
     }
   };
@@ -106,20 +104,24 @@ export function NotificationPanel() {
         size="icon"
         className="relative h-8 w-8 text-zinc-400 hover:text-zinc-200"
         onClick={() => setOpen(!open)}
+        aria-label={open ? 'Close notifications' : `Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ''}`}
+        aria-expanded={open}
+        aria-haspopup="menu"
       >
         {unreadCount > 0 ? (
           <>
-            <Bell className="h-4 w-4" />
+            <Bell className="h-4 w-4" aria-hidden="true" />
             <motion.span
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-bold text-white"
+              aria-label={`${unreadCount} unread notifications`}
             >
               {unreadCount > 9 ? '9+' : unreadCount}
             </motion.span>
           </>
         ) : (
-          <BellOff className="h-4 w-4" />
+          <BellOff className="h-4 w-4" aria-hidden="true" />
         )}
       </Button>
 
@@ -133,44 +135,47 @@ export function NotificationPanel() {
               exit={{ opacity: 0 }}
               className="fixed inset-0 z-50"
               onClick={() => setOpen(false)}
+              aria-hidden="true"
             />
             <motion.div
               initial={{ opacity: 0, y: -8, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -8, scale: 0.95 }}
-              transition={{ duration: 0.2, ease: EASE }}
-              className="absolute right-0 top-full z-50 mt-2 w-80 overflow-hidden rounded-xl border border-white/[0.08] bg-zinc-900/95 shadow-2xl backdrop-blur-xl"
+              transition={{ duration: 0.2 }}
+              className="absolute right-0 top-full z-50 mt-2 w-72 sm:w-80 overflow-hidden rounded-xl border border-white/[0.08] bg-zinc-900/95 shadow-2xl backdrop-blur-xl"
+              role="menu"
+              aria-label="Notifications panel"
             >
               {/* Header */}
               <div className="flex items-center justify-between border-b border-white/[0.06] px-4 py-3">
                 <div className="flex items-center gap-2">
-                  <Bell className="h-3.5 w-3.5 text-zinc-400" />
+                  <Bell className="h-3.5 w-3.5 text-zinc-400" aria-hidden="true" />
                   <span className="text-xs font-medium text-zinc-200">Notifications</span>
                   {unreadCount > 0 && (
-                    <span className="rounded-full bg-rose-500/20 px-1.5 py-0.5 text-[9px] font-medium text-rose-400">{unreadCount}</span>
+                    <span className="rounded-full bg-rose-500/20 px-1.5 py-0.5 text-[9px] font-medium text-rose-400" aria-live="polite">{unreadCount}</span>
                   )}
                 </div>
                 <div className="flex items-center gap-1">
                   {unreadCount > 0 && (
-                    <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px] text-zinc-500 hover:text-zinc-300" onClick={markAllRead}>
-                      <CheckCheck className="mr-1 h-3 w-3" />Mark all read
+                    <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px] text-zinc-500 hover:text-zinc-300" onClick={markAllRead} aria-label="Mark all notifications as read">
+                      <CheckCheck className="mr-1 h-3 w-3" aria-hidden="true" />Mark all read
                     </Button>
                   )}
-                  <Button variant="ghost" size="icon" className="h-6 w-6 text-zinc-600 hover:text-zinc-300" onClick={() => setOpen(false)}>
+                  <Button variant="ghost" size="icon" className="h-6 w-6 text-zinc-600 hover:text-zinc-300" onClick={() => setOpen(false)} aria-label="Close notifications">
                     <X className="h-3.5 w-3.5" />
                   </Button>
                 </div>
               </div>
 
               {/* List */}
-              <ScrollArea className="max-h-72">
+              <ScrollArea className="max-h-72" role="menu">
                 {loading ? (
-                  <div className="flex items-center justify-center py-8">
+                  <div className="flex items-center justify-center py-8" aria-label="Loading notifications">
                     <Loader2 className="h-4 w-4 animate-spin text-zinc-600" />
                   </div>
                 ) : notifications.length === 0 ? (
-                  <div className="flex flex-col items-center py-8 text-center">
-                    <BellOff className="h-6 w-6 text-zinc-700 mb-2" />
+                  <div className="flex flex-col items-center py-8 text-center" aria-label="No notifications">
+                    <BellOff className="h-6 w-6 text-zinc-700 mb-2" aria-hidden="true" />
                     <p className="text-xs text-zinc-500">No notifications yet</p>
                     <p className="text-[10px] text-zinc-700 mt-0.5">Smart alerts will appear here</p>
                   </div>
@@ -189,14 +194,16 @@ export function NotificationPanel() {
                             !n.read && 'bg-white/[0.02]'
                           )}
                           onClick={() => handleNotifClick(n)}
+                          aria-label={`${n.title}${!n.read ? ' (unread)' : ''}`}
+                          role="menuitem"
                         >
-                          <div className={cn('mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg', colorClass)}>
+                          <div className={cn('mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg', colorClass)} aria-hidden="true">
                             <Icon className="h-3.5 w-3.5" />
                           </div>
                           <div className="min-w-0 flex-1">
                             <div className="flex items-start justify-between gap-2">
                               <p className={cn('text-xs font-medium', !n.read ? 'text-zinc-100' : 'text-zinc-400')}>{n.title}</p>
-                              {!n.read && <div className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-400 mt-1.5" />}
+                              {!n.read && <div className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-400 mt-1.5" aria-hidden="true" />}
                             </div>
                             <p className="mt-0.5 text-[11px] leading-relaxed text-zinc-500 line-clamp-2">{n.body}</p>
                             <p className="mt-1 text-[9px] text-zinc-700">{timeAgo(n.createdAt)}</p>

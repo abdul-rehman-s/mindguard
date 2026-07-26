@@ -20,35 +20,50 @@ import { DailyReview } from '@/components/review/daily-review';
 import { OnboardingFlow } from '@/components/onboarding/onboarding-flow';
 import { FocusMode } from '@/components/timer/focus-mode';
 import { Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 import { useMounted } from '@/hooks/use-mounted';
 
 export default function HomePage() {
   const mounted = useMounted();
   const { data: session, status } = useSession();
-  const { currentView, setUser, setView, setLoading, focusMode, setFocusMode, activeMission, focusDuration } = useAppStore();
+
+  // Individual selectors to avoid Zustand over-rendering
+  const currentView = useAppStore(s => s.currentView);
+  const setUser = useAppStore(s => s.setUser);
+  const setView = useAppStore(s => s.setView);
+  const setLoading = useAppStore(s => s.setLoading);
+  const focusMode = useAppStore(s => s.focusMode);
+  const setFocusMode = useAppStore(s => s.setFocusMode);
+  const activeMission = useAppStore(s => s.activeMission);
+  const focusDuration = useAppStore(s => s.focusDuration);
+  const user = useAppStore(s => s.user);
+
   const [showOnboarding, setShowOnboarding] = useState(false);
   const onboardingCheckedRef = useRef(false);
 
   useEffect(() => {
     if (status === 'authenticated' && !onboardingCheckedRef.current) {
       onboardingCheckedRef.current = true;
-      const user = session?.user as Record<string, unknown> | undefined;
-      if (!user?.onboarded) {
+      const sessionUser = session?.user as Record<string, unknown> | undefined;
+      if (!sessionUser?.onboarded) {
         fetch('/api/onboarding').then(r => r.json()).then(d => {
           if (!d.onboarded) setShowOnboarding(true);
-        }).catch(() => {});
+        }).catch((err) => {
+          toast.error('Failed to check onboarding status');
+          console.error('Onboarding check failed:', err);
+        });
       }
     }
   }, [status, session]);
 
   useEffect(() => {
     if (status === 'authenticated' && session?.user && !showOnboarding) {
-      const user = session.user as Record<string, unknown>;
+      const sessionUser = session.user as Record<string, unknown>;
       setUser({
-        id: (user.id as string) || '',
-        email: (user.email as string) || '',
-        name: (user.name as string) || null,
-        onboarded: (user.onboarded as boolean) ?? true,
+        id: (sessionUser.id as string) || '',
+        email: (sessionUser.email as string) || '',
+        name: (sessionUser.name as string) || null,
+        onboarded: (sessionUser.onboarded as boolean) ?? true,
       });
       if (currentView === 'landing') {
         setView('dashboard');
@@ -62,8 +77,7 @@ export default function HomePage() {
 
   const handleOnboardingComplete = () => {
     setShowOnboarding(false);
-    const user = session?.user as Record<string, unknown>;
-    if (user) setUser({ ...useAppStore.getState().user!, onboarded: true });
+    if (user) setUser({ ...user, onboarded: true });
     setView('dashboard');
   };
 

@@ -1,21 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { getAuthUserId } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { createMissionSchema } from "@/lib/validators";
-
-async function getUserId(): Promise<string | NextResponse> {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-  const user = session.user as Record<string, unknown>;
-  return user.id as string;
-}
+import { logError } from "@/lib/logger";
 
 export async function GET() {
-  const userId = await getUserId();
-  if (userId instanceof NextResponse) return userId;
+  const userIdOr401 = await getAuthUserId();
+  if (userIdOr401 instanceof NextResponse) return userIdOr401;
+  const userId = userIdOr401;
 
   try {
     const missions = await db.mission.findMany({
@@ -25,7 +17,8 @@ export async function GET() {
     });
 
     return NextResponse.json(missions);
-  } catch {
+  } catch (e) {
+    logError("missions", "Failed to fetch missions", e);
     return NextResponse.json(
       { error: "Failed to fetch missions" },
       { status: 500 }
@@ -34,8 +27,9 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-  const userId = await getUserId();
-  if (userId instanceof NextResponse) return userId;
+  const userIdOr401 = await getAuthUserId();
+  if (userIdOr401 instanceof NextResponse) return userIdOr401;
+  const userId = userIdOr401;
 
   try {
     const body = await request.json();
@@ -70,6 +64,7 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+    logError("missions", "Failed to create mission", error);
     return NextResponse.json(
       { error: "Failed to create mission" },
       { status: 500 }

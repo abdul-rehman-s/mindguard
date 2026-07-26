@@ -1,54 +1,57 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getAuthUserId } from '@/lib/auth-utils';
 import { db } from '@/lib/db';
+import { logError } from '@/lib/logger';
 import { format, startOfDay, subDays } from 'date-fns';
+import { z } from 'zod';
 
-async function getUserId(): Promise<string | NextResponse> {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-  const user = session.user as Record<string, unknown>;
-  return user.id as string;
-}
+// Zod validation for POST body
+const notificationActionSchema = z.object({
+  id: z.string().optional(),
+  markAll: z.boolean().optional(),
+}).refine(data => data.id !== undefined || data.markAll === true, {
+  message: 'Provide id or markAll',
+});
 
 // GET: Fetch notifications
 export async function GET() {
-  const userId = await getUserId();
-  if (userId instanceof NextResponse) return userId;
+  const userIdOr401 = await getAuthUserId();
+  if (userIdOr401 instanceof NextResponse) return userIdOr401;
+  const userId = userIdOr401;
 
   try {
-    const notifications = await db.notification.findMany({
-      where: { userId },
-      orderBy: { createdAt: 'desc' },
-      take: 50,
-    });
-
-    const unreadCount = await db.notification.count({
-      where: { userId, read: false },
-    });
+    const [notifications, unreadCount] = await Promise.all([
+      db.notification.findMany({
+        where: { userId },
+        orderBy: { createdAt: 'desc' },
+        take: 50,
+      }),
+      db.notification.count({
+        where: { userId, read: false },
+      }),
+    ]);
 
     return NextResponse.json({
       notifications,
       unreadCount,
     });
   } catch (e) {
-    console.error('[notifications] error', e);
+    logError("notifications", "Failed to fetch notifications", e);
     return NextResponse.json({ error: 'Failed to fetch notifications' }, { status: 500 });
   }
 }
 
 // POST: Mark as read
 export async function POST(req: Request) {
-  const userId = await getUserId();
-  if (userId instanceof NextResponse) return userId;
+  const userIdOr401 = await getAuthUserId();
+  if (userIdOr401 instanceof NextResponse) return userIdOr401;
+  const userId = userIdOr401;
 
   try {
     const body = await req.json();
-    const { id } = body as { id?: string; markAll?: boolean };
+    const validated = notificationActionSchema.parse(body);
 
-    if (body.markAll) {
+    if (validated.markAll) {
       await db.notification.updateMany({
         where: { userId, read: false },
         data: { read: true },
@@ -56,25 +59,32 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: true });
     }
 
-    if (id) {
+    if (validated.id) {
       await db.notification.update({
-        where: { id, userId },
+        where: { id: validated.id, userId },
         data: { read: true },
       });
       return NextResponse.json({ success: true });
     }
 
     return NextResponse.json({ error: 'Provide id or markAll' }, { status: 400 });
-  } catch (e) {
-    console.error('[notifications] POST error', e);
+  } catch (error: unknown) {
+    if (error && typeof error === "object" && "issues" in error) {
+      return NextResponse.json(
+        { error: "Validation failed", details: (error as { issues: Array<{ message: string }> }).issues },
+        { status: 400 }
+      );
+    }
+    logError("notifications", "Failed to update notification", error);
     return NextResponse.json({ error: 'Failed to update notification' }, { status: 500 });
   }
 }
 
 // Generate smart notifications based on user data
 export async function PUT() {
-  const userId = await getUserId();
-  if (userId instanceof NextResponse) return userId;
+  const userIdOr401 = await getAuthUserId();
+  if (userIdOr401 instanceof NextResponse) return userIdOr401;
+  const userId = userIdOr401;
 
   try {
     const now = new Date();
@@ -125,7 +135,7 @@ export async function PUT() {
     if (todaySessions.length > 0) {
       const lastSession = todaySessions[todaySessions.length - 1];
       const sessionEnd = new Date(lastSession.startedAt).getTime() + lastSession.duration * 1000;
-      if (now.getTime() - sessionEnd < 60000 && lastSession.duration >= 5400) { // just ended 90min+
+      if (now.getTime() - sessionEnd < 60000 && lastSession.duration >= 5400) {
         created.push({
           type: 'break_reminder',
           title: 'Take a well-earned break',
@@ -169,22 +179,22 @@ export async function PUT() {
       }
     }
 
-    // Create notifications
-    for (const n of created) {
-      await db.notification.create({
-        data: {
+    // Create notifications using createMany for batch efficiency
+    if (created.length > 0) {
+      await db.notification.createMany({
+        data: created.map((n) => ({
           userId,
           type: n.type,
           title: n.title,
           body: n.body,
           actionUrl: n.actionUrl || null,
-        },
+        })),
       });
     }
 
     return NextResponse.json({ created: created.length, types: created.map((c) => c.type) });
   } catch (e) {
-    console.error('[notifications] PUT error', e);
+    logError("notifications", "Failed to generate notifications", e);
     return NextResponse.json({ error: 'Failed to generate notifications' }, { status: 500 });
   }
 }

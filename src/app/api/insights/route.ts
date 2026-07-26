@@ -1,25 +1,16 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getAuthUserId } from '@/lib/auth-utils';
 import { db } from '@/lib/db';
+import { findBestHour, findBestWeekday, shortWeekdayLabel } from '@/lib/analytics';
+import { logError } from '@/lib/logger';
 import {
   format,
   startOfDay,
   subDays,
   startOfWeek,
   endOfWeek,
-  differenceInCalendarDays,
   eachDayOfInterval,
 } from 'date-fns';
-
-async function getUserId(): Promise<string | NextResponse> {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-  const user = session.user as Record<string, unknown>;
-  return user.id as string;
-}
 
 const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -45,9 +36,14 @@ function mean(values: number[]): number {
   return values.reduce((a, b) => a + b, 0) / values.length;
 }
 
+function clampPct(pct: number): number {
+  return Math.max(0, Math.min(100, Math.round(pct)));
+}
+
 export async function GET() {
-  const userId = await getUserId();
-  if (userId instanceof NextResponse) return userId;
+  const userIdOr401 = await getAuthUserId();
+  if (userIdOr401 instanceof NextResponse) return userIdOr401;
+  const userId = userIdOr401;
 
   try {
     const now = new Date();
@@ -101,7 +97,6 @@ export async function GET() {
     }));
 
     // --- weeklyTrend: minutes per ISO week (Mon-Sun) for last 4 weeks + this week ---
-    // Build week boundaries for last 5 weeks (weekStartsOn Monday)
     const weeklyTrend: { week: string; minutes: number; sessions: number }[] = [];
     for (let w = 4; w >= 0; w--) {
       const ref = subDays(now, w * 7);
@@ -159,7 +154,7 @@ export async function GET() {
           ? 100
           : 0;
 
-    // --- Reflection correlation: avg minutes on days with vs without reflections ---
+    // --- Reflection correlation ---
     const reflectionDates = new Set(reflections.map((r) => r.date));
     const withReflection: number[] = [];
     const withoutReflection: number[] = [];
@@ -185,7 +180,7 @@ export async function GET() {
     const missionCompletionRate =
       totalMissions > 0 ? Math.round((completedMissions / totalMissions) * 100) : 0;
 
-    // --- Average session length trend ---
+    // --- Average session length ---
     const avgSessionLengthMin =
       sessions.length > 0
         ? Math.round(
@@ -195,7 +190,7 @@ export async function GET() {
           )
         : 0;
 
-    // First-half vs second-half avg session length (trend within 30 days)
+    // First-half vs second-half avg session length
     const midIndex = Math.floor(sessions.length / 2);
     const firstHalf = sessions.slice(0, Math.max(midIndex, 1));
     const secondHalf = sessions.slice(Math.max(midIndex, 1));
@@ -212,51 +207,38 @@ export async function GET() {
         ? Math.round(((secondHalfAvg - firstHalfAvg) / firstHalfAvg) * 100)
         : 0;
 
-    // --- Now build insights from real patterns ---
+    // --- Build insights using shared helpers ---
     const insights: Insight[] = [];
 
-    // Insight 1: Best weekday
-    let bestWeekdayIdx = -1;
-    let bestWeekdayMinutes = 0;
-    for (let i = 0; i < 7; i++) {
-      if (weekdayMinutes[i] > bestWeekdayMinutes) {
-        bestWeekdayMinutes = weekdayMinutes[i];
-        bestWeekdayIdx = i;
-      }
-    }
-    if (bestWeekdayIdx >= 0 && bestWeekdayMinutes > 0) {
+    // Insight 1: Best weekday (using shared helper)
+    const bestWeekdayIdx = findBestWeekday(sessions);
+    const bestWeekdayMinutes = bestWeekdayIdx !== null ? weekdayMinutes[bestWeekdayIdx] : 0;
+    if (bestWeekdayIdx !== null && bestWeekdayMinutes > 0) {
       insights.push({
         type: 'pattern',
-        title: `${WEEKDAY_LABELS[bestWeekdayIdx]} is your strongest day`,
-        description: `You log the most focus time on ${WEEKDAY_LABELS[bestWeekdayIdx]} — ${Math.round(bestWeekdayMinutes)} minutes across ${weekdaySessionCount[bestWeekdayIdx]} session${weekdaySessionCount[bestWeekdayIdx] === 1 ? '' : 's'} in the last 30 days.`,
+        title: `${shortWeekdayLabel(bestWeekdayIdx)} is your strongest day`,
+        description: `You log the most focus time on ${shortWeekdayLabel(bestWeekdayIdx)} — ${Math.round(bestWeekdayMinutes)} minutes across ${weekdaySessionCount[bestWeekdayIdx]} session${weekdaySessionCount[bestWeekdayIdx] === 1 ? '' : 's'} in the last 30 days.`,
         metric: 'focus minutes',
         value: Math.round(bestWeekdayMinutes),
         icon: 'Calendar',
       });
     }
 
-    // Insight 2: Best hour
-    let bestHour = -1;
-    let bestHourMinutes = 0;
-    for (let h = 0; h < 24; h++) {
-      if (focusByHour[h] > bestHourMinutes) {
-        bestHourMinutes = focusByHour[h];
-        bestHour = h;
-      }
-    }
-    if (bestHour >= 0 && bestHourMinutes > 0) {
+    // Insight 2: Best hour (using shared helper)
+    const bestHour = findBestHour(sessions);
+    if (bestHour !== null && focusByHour[bestHour] > 0) {
       const hourLabel = format(new Date().setHours(bestHour, 0, 0, 0), 'h a');
       insights.push({
         type: 'pattern',
         title: `Peak focus hour is ${hourLabel}`,
-        description: `You accumulate the most focus time starting around ${hourLabel} — ${Math.round(bestHourMinutes)} minutes in the last 30 days. Schedule your hardest work in this window.`,
+        description: `You accumulate the most focus time starting around ${hourLabel} — ${Math.round(focusByHour[bestHour])} minutes in the last 30 days. Schedule your hardest work in this window.`,
         metric: 'focus minutes',
-        value: Math.round(bestHourMinutes),
+        value: Math.round(focusByHour[bestHour]),
         icon: 'Clock',
       });
     }
 
-    // Insight 3: Afternoon dip — check hours 13-16 vs hours 9-11
+    // Insight 3: Afternoon dip
     const morningMinutes = focusByHour[9] + focusByHour[10] + focusByHour[11];
     const afternoonMinutes = focusByHour[13] + focusByHour[14] + focusByHour[15] + focusByHour[16];
     if (morningMinutes > 0 && afternoonMinutes < morningMinutes * 0.5) {
@@ -381,7 +363,7 @@ export async function GET() {
       });
     }
 
-    // Insight 9: Overall volume (achievement-level)
+    // Insight 9: Overall volume
     if (sessions.length > 0) {
       const totalMin = Math.round(sessions.reduce((acc, s) => acc + s.duration, 0) / 60);
       insights.push({
@@ -406,7 +388,7 @@ export async function GET() {
       });
     }
 
-    // Sort: pattern/trend first, achievement/suggestion last (keep stable)
+    // Sort: pattern/trend first, achievement/suggestion last
     const typeOrder = { pattern: 0, trend: 1, achievement: 2, suggestion: 3 };
     insights.sort((a, b) => typeOrder[a.type] - typeOrder[b.type]);
 
@@ -429,14 +411,10 @@ export async function GET() {
       },
     });
   } catch (e) {
-    console.error('[insights] error', e);
+    logError("insights", "Failed to generate insights", e);
     return NextResponse.json(
       { error: 'Failed to generate insights' },
       { status: 500 }
     );
   }
-}
-
-function clampPct(pct: number): number {
-  return Math.max(0, Math.min(100, Math.round(pct)));
 }

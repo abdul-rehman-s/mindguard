@@ -1,24 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { getAuthUserId } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { updateMissionSchema } from "@/lib/validators";
-
-async function getUserId(): Promise<string | NextResponse> {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-  const user = session.user as Record<string, unknown>;
-  return user.id as string;
-}
+import { logError } from "@/lib/logger";
 
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const userId = await getUserId();
-  if (userId instanceof NextResponse) return userId;
+  const userIdOr401 = await getAuthUserId();
+  if (userIdOr401 instanceof NextResponse) return userIdOr401;
+  const userId = userIdOr401;
 
   const { id } = await params;
 
@@ -49,8 +41,9 @@ export async function PUT(
       data.status = "deleted";
     }
 
+    // Defense-in-depth: include userId in where clause
     const mission = await db.mission.update({
-      where: { id },
+      where: { id, userId },
       data,
       include: { focusSessions: true },
     });
@@ -66,6 +59,7 @@ export async function PUT(
         { status: 400 }
       );
     }
+    logError("missions/[id]", "Failed to update mission", error);
     return NextResponse.json(
       { error: "Failed to update mission" },
       { status: 500 }
@@ -77,8 +71,9 @@ export async function DELETE(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const userId = await getUserId();
-  if (userId instanceof NextResponse) return userId;
+  const userIdOr401 = await getAuthUserId();
+  if (userIdOr401 instanceof NextResponse) return userIdOr401;
+  const userId = userIdOr401;
 
   const { id } = await params;
 
@@ -94,13 +89,15 @@ export async function DELETE(
       );
     }
 
+    // Defense-in-depth: include userId in where clause
     await db.mission.update({
-      where: { id },
+      where: { id, userId },
       data: { status: "deleted" },
     });
 
     return NextResponse.json({ success: true });
-  } catch {
+  } catch (e) {
+    logError("missions/[id]", "Failed to delete mission", e);
     return NextResponse.json(
       { error: "Failed to delete mission" },
       { status: 500 }

@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
-import { motion, useMotionValue, useTransform, animate } from 'framer-motion';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import { motion } from 'framer-motion';
 import {
   Laptop,
   Brain,
@@ -24,40 +24,13 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useAppStore } from '@/stores/app-store';
 import { StaggerContainer, StaggerItem } from '@/components/premium/stagger';
-import { cn } from '@/lib/utils';
+import { AnimatedNumber } from '@/components/premium/animated-number';
+import { cn, formatDuration } from '@/lib/utils';
+import { fadeInUp } from '@/lib/animations';
 import type { LifeDashboardData } from '@/types';
 
-const EASE = [0.25, 0.1, 0.25, 1] as [number, number, number, number];
-
-// ---- Animated Number ----
-function AnimNum({ value, decimals = 0, className }: { value: number; decimals?: number; className?: string }) {
-  const mv = useMotionValue(0);
-  const display = useTransform(mv, (v) =>
-    decimals > 0 ? v.toFixed(decimals) : Math.round(v).toString()
-  );
-  const ref = useRef<HTMLSpanElement>(null);
-  const init = useRef(false);
-
-  useEffect(() => {
-    if (!init.current) {
-      init.current = true;
-      const c = animate(mv, value, { duration: 1.2, ease: EASE });
-      return c.stop;
-    }
-    const c = animate(mv, value, { duration: 0.6, ease: EASE });
-    return c.stop;
-  }, [value, mv]);
-
-  useEffect(() => {
-    const unsub = display.on('change', (v) => { if (ref.current) ref.current.textContent = v; });
-    return unsub;
-  }, [display]);
-
-  return <span ref={ref} className={className}>{decimals > 0 ? value.toFixed(decimals) : value}</span>;
-}
-
 // ---- Metric Card ----
-function MetricCard({
+const MetricCard = React.memo(function MetricCard({
   icon: Icon, label, value, unit, sub, color, delay = 0, progressVal,
 }: {
   icon: typeof Laptop;
@@ -73,20 +46,20 @@ function MetricCard({
     <motion.div
       initial={{ opacity: 0, y: 16, scale: 0.97 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{ delay, duration: 0.5, ease: EASE }}
+      transition={{ delay, duration: 0.5 }}
       whileHover={{ y: -2, transition: { duration: 0.2 } }}
     >
       <Card className="card-glow glass-card glass-glow-edge border-white/[0.06] bg-white/[0.02] h-full">
         <CardContent className="p-4 sm:p-5">
           <div className="mb-3 flex items-center justify-between">
-            <div className={cn('flex h-9 w-9 items-center justify-center rounded-lg', color)}>
+            <div className={cn('flex h-9 w-9 items-center justify-center rounded-lg', color)} aria-hidden="true">
               <Icon className="h-4 w-4" />
             </div>
             {sub && <span className="text-[10px] font-medium text-zinc-600">{sub}</span>}
           </div>
           <p className="text-[10px] sm:text-[11px] font-medium uppercase tracking-wider text-zinc-500">{label}</p>
-          <div className="mt-1 flex items-baseline gap-1">
-            <AnimNum value={value} className="text-xl sm:text-2xl font-bold tabular-nums text-zinc-50" />
+          <div className="mt-1 flex items-baseline gap-1" aria-live="polite">
+            <AnimatedNumber value={value} className="text-xl sm:text-2xl font-bold tabular-nums text-zinc-50" />
             {unit && <span className="text-xs text-zinc-600">{unit}</span>}
           </div>
           {progressVal !== undefined && (
@@ -94,7 +67,7 @@ function MetricCard({
               <motion.div
                 initial={{ width: 0 }}
                 animate={{ width: `${progressVal}%` }}
-                transition={{ delay: delay + 0.3, duration: 0.8, ease: EASE }}
+                transition={{ delay: delay + 0.3, duration: 0.8 }}
                 className="h-full rounded-full bg-gradient-to-r from-emerald-500/80 to-teal-400/60"
               />
             </div>
@@ -103,15 +76,15 @@ function MetricCard({
       </Card>
     </motion.div>
   );
-}
+});
 
 // ---- Hourly Chart ----
-function HourlyChart({ data }: { data: { hour: number; minutes: number }[] }) {
+const HourlyChart = React.memo(function HourlyChart({ data }: { data: { hour: number; minutes: number }[] }) {
   const maxVal = useMemo(() => Math.max(...data.map((d) => d.minutes), 1), [data]);
   const currentHour = new Date().getHours();
 
   return (
-    <div className="flex items-end gap-[2px] h-20">
+    <div className="flex items-end gap-[2px] h-20" role="img" aria-label="Hourly focus distribution chart">
       {data.map((d) => {
         const h = Math.max(2, (d.minutes / maxVal) * 100);
         const isNow = d.hour === currentHour;
@@ -120,7 +93,7 @@ function HourlyChart({ data }: { data: { hour: number; minutes: number }[] }) {
             <motion.div
               initial={{ height: 0 }}
               animate={{ height: `${h}%` }}
-              transition={{ delay: d.hour * 0.02, duration: 0.4, ease: EASE }}
+              transition={{ delay: d.hour * 0.02, duration: 0.4 }}
               className={cn(
                 'w-full rounded-sm min-h-[2px]',
                 isNow
@@ -138,10 +111,10 @@ function HourlyChart({ data }: { data: { hour: number; minutes: number }[] }) {
       })}
     </div>
   );
-}
+});
 
 // ---- Category Breakdown ----
-function CategoryBar({ categories }: { categories: { category: string; minutes: number; color: string }[] }) {
+const CategoryBar = React.memo(function CategoryBar({ categories }: { categories: { category: string; minutes: number; color: string }[] }) {
   const total = categories.reduce((a, c) => a + c.minutes, 0) || 1;
   return (
     <div className="space-y-2.5">
@@ -153,14 +126,14 @@ function CategoryBar({ categories }: { categories: { category: string; minutes: 
           transition={{ delay: 0.6 + i * 0.06, duration: 0.4 }}
         >
           <div className="flex items-center justify-between mb-1">
-          <span className="text-xs text-zinc-400 capitalize">{c.category}</span>
-          <span className="text-xs tabular-nums text-zinc-500">{c.minutes}m</span>
-        </div>
+            <span className="text-xs text-zinc-400 capitalize">{c.category}</span>
+            <span className="text-xs tabular-nums text-zinc-500" aria-live="polite">{c.minutes}m</span>
+          </div>
           <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/[0.04]">
             <motion.div
               initial={{ width: 0 }}
               animate={{ width: `${(c.minutes / total) * 100}%` }}
-              transition={{ delay: 0.7 + i * 0.06, duration: 0.6, ease: EASE }}
+              transition={{ delay: 0.7 + i * 0.06, duration: 0.6 }}
               className={cn('h-full rounded-full', c.color.replace('text-', 'bg-').replace('400', '500/60'))}
             />
           </div>
@@ -171,10 +144,10 @@ function CategoryBar({ categories }: { categories: { category: string; minutes: 
       )}
     </div>
   );
-}
+});
 
 // ---- XP Level Ring ----
-function LevelRing({ xp, level }: { xp: number; level: number }) {
+const LevelRing = React.memo(function LevelRing({ xp, level }: { xp: number; level: number }) {
   const xpForNext = level * 500;
   const prevXp = (level - 1) * 500;
   const progress = Math.min(100, ((xp - prevXp) / (xpForNext - prevXp)) * 100);
@@ -184,7 +157,7 @@ function LevelRing({ xp, level }: { xp: number; level: number }) {
   return (
     <div className="flex items-center gap-4">
       <div className="relative flex h-20 w-20 shrink-0 items-center justify-center">
-        <svg className="h-20 w-20 -rotate-90" viewBox="0 0 80 80">
+        <svg className="h-20 w-20 -rotate-90" viewBox="0 0 80 80" aria-hidden="true">
           <circle cx="40" cy="40" r="36" fill="none" stroke="rgba(255,255,255,0.04)" strokeWidth="4" />
           <motion.circle
             cx="40" cy="40" r="36" fill="none"
@@ -192,22 +165,53 @@ function LevelRing({ xp, level }: { xp: number; level: number }) {
             strokeDasharray={circumference}
             initial={{ strokeDashoffset: circumference }}
             animate={{ strokeDashoffset }}
-            transition={{ delay: 0.5, duration: 1.2, ease: EASE }}
+            transition={{ delay: 0.5, duration: 1.2 }}
           />
           <defs><linearGradient id="xpGrad" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stopColor="rgb(16,185,129)" /><stop offset="100%" stopColor="rgb(45,212,191)" /></linearGradient></defs>
         </svg>
-        <div className="absolute flex flex-col items-center">
-          <span className="text-lg font-bold tabular-nums text-zinc-100">{level}</span>
+        <div className="absolute flex flex-col items-center" aria-live="polite">
+          <AnimatedNumber value={level} className="text-lg font-bold tabular-nums text-zinc-100" />
           <span className="text-[9px] text-zinc-500">LVL</span>
         </div>
       </div>
       <div>
         <p className="text-xs font-medium text-zinc-400">Experience Points</p>
-        <p className="mt-0.5 text-xl font-bold tabular-nums text-zinc-100">
-          <AnimNum value={xp} className="text-xl font-bold tabular-nums text-emerald-400" />
+        <p className="mt-0.5 text-xl font-bold tabular-nums text-zinc-100" aria-live="polite">
+          <AnimatedNumber value={xp} className="text-xl font-bold tabular-nums text-emerald-400" />
           <span className="text-xs text-zinc-600 ml-1">/ {xpForNext} XP</span>
         </p>
         <p className="mt-1 text-[10px] text-zinc-600">{Math.round(xpForNext - xp)} XP to next level</p>
+      </div>
+    </div>
+  );
+});
+
+// ---- Loading Skeleton ----
+function LifeDashboardSkeleton() {
+  return (
+    <div className="app-grid-bg min-h-full -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+      <div className="pt-2 mb-8">
+        <div className="flex items-center gap-3.5">
+          <div className="h-11 w-11 rounded-xl bg-white/[0.03] animate-pulse" />
+          <div>
+            <div className="h-7 w-48 rounded bg-white/[0.03] animate-pulse" />
+            <div className="mt-1 h-4 w-64 rounded bg-white/[0.02] animate-pulse" />
+          </div>
+        </div>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 mb-6">
+        {[0, 1, 2].map((i) => (
+          <div key={i} className="h-32 rounded-xl bg-white/[0.02] animate-pulse" />
+        ))}
+      </div>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 mb-6">
+        {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => (
+          <div key={i} className="h-28 rounded-xl bg-white/[0.02] animate-pulse" />
+        ))}
+      </div>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <div className="h-48 rounded-xl bg-white/[0.02] animate-pulse" />
+        <div className="h-48 rounded-xl bg-white/[0.02] animate-pulse" />
       </div>
     </div>
   );
@@ -215,7 +219,8 @@ function LevelRing({ xp, level }: { xp: number; level: number }) {
 
 // ---- Main Component ----
 export function LifeDashboard() {
-  const { setLifeData, lifeData } = useAppStore();
+  const setLifeData = useAppStore(s => s.setLifeData);
+  const lifeData = useAppStore(s => s.lifeData);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -237,19 +242,15 @@ export function LifeDashboard() {
   useEffect(() => { fetchLife(); }, [fetchLife]);
 
   if (loading) {
-    return (
-      <div className="flex h-64 items-center justify-center">
-        <Loader2 className="h-5 w-5 animate-spin text-zinc-600" />
-      </div>
-    );
+    return <LifeDashboardSkeleton />;
   }
 
   if (error || !lifeData) {
     return (
-      <div className="flex h-64 flex-col items-center justify-center gap-3">
-        <AlertCircle className="h-8 w-8 text-red-400/60" />
+      <div className="flex h-64 flex-col items-center justify-center gap-3" role="alert" aria-live="polite">
+        <AlertCircle className="h-8 w-8 text-red-400/60" aria-hidden="true" />
         <p className="text-sm text-zinc-400">{error || 'No data available'}</p>
-        <Button variant="ghost" size="sm" onClick={fetchLife}>Try again</Button>
+        <Button variant="ghost" size="sm" onClick={fetchLife} aria-label="Retry loading life dashboard">Try again</Button>
       </div>
     );
   }
@@ -261,7 +262,7 @@ export function LifeDashboard() {
       {/* Header */}
       <StaggerItem className="mb-8 pt-2">
         <div className="flex items-center gap-3.5">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500/15 to-teal-500/10">
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500/15 to-teal-500/10" aria-hidden="true">
             <Monitor className="h-5 w-5 text-emerald-400" />
           </div>
           <div>
@@ -279,21 +280,19 @@ export function LifeDashboard() {
       <StaggerItem className="mb-6">
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <Card className="card-glow glass-card glass-glow-edge border-white/[0.06] bg-white/[0.02]">
-            <CardContent className="p-5">
+            <CardContent className="p-4 sm:p-5">
               <LevelRing xp={d.xp} level={d.level} />
             </CardContent>
           </Card>
 
-          <motion.div
-            initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1, duration: 0.5, ease: EASE }}
-          >
-            <Card className="card-glow glass-card glass-glow-edge border-white/[0.06] bg-white/[0.02] h-full flex flex-col items-center justify-center p-6">
+          <motion.div variants={fadeInUp} initial="hidden" animate="visible">
+            <Card className="card-glow glass-card glass-glow-edge border-white/[0.06] bg-white/[0.02] h-full flex flex-col items-center justify-center p-4 sm:p-6">
               <div className="mb-2 flex items-center gap-2">
-                <Brain className="h-3.5 w-3.5 text-zinc-500" />
+                <Brain className="h-3.5 w-3.5 text-zinc-500" aria-hidden="true" />
                 <span className="text-[10px] font-medium uppercase tracking-wider text-zinc-500">Attention Score</span>
               </div>
               <div className="relative flex h-24 w-24 items-center justify-center">
-                <svg className="h-24 w-24 -rotate-90" viewBox="0 0 96 96">
+                <svg className="h-24 w-24 -rotate-90" viewBox="0 0 96 96" aria-hidden="true">
                   <circle cx="48" cy="48" r="42" fill="none" stroke="rgba(255,255,255,0.04)" strokeWidth="5" />
                   <motion.circle
                     cx="48" cy="48" r="42" fill="none"
@@ -302,30 +301,28 @@ export function LifeDashboard() {
                     strokeDasharray={2 * Math.PI * 42}
                     initial={{ strokeDashoffset: 2 * Math.PI * 42 }}
                     animate={{ strokeDashoffset: 2 * Math.PI * 42 * (1 - d.attentionScore / 100) }}
-                    transition={{ delay: 0.4, duration: 1.2, ease: EASE }}
+                    transition={{ delay: 0.4, duration: 1.2 }}
                   />
                 </svg>
-                <span className="absolute text-3xl font-bold tabular-nums text-zinc-50">
-                  <AnimNum value={d.attentionScore} />
+                <span className="absolute text-3xl font-bold tabular-nums text-zinc-50" aria-live="polite">
+                  <AnimatedNumber value={d.attentionScore} />
                 </span>
               </div>
               <p className="mt-2 text-[10px] text-zinc-600">Composite score based on focus, consistency & streak</p>
             </Card>
           </motion.div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15, duration: 0.5, ease: EASE }}
-          >
-            <Card className="card-glow glass-card glass-glow-edge border-white/[0.06] bg-white/[0.02] h-full flex flex-col items-center justify-center p-6">
+          <motion.div variants={fadeInUp} initial="hidden" animate="visible">
+            <Card className="card-glow glass-card glass-glow-edge border-white/[0.06] bg-white/[0.02] h-full flex flex-col items-center justify-center p-4 sm:p-6">
               <div className="mb-2 flex items-center gap-2">
-                <Flame className="h-3.5 w-3.5 text-zinc-500" />
+                <Flame className="h-3.5 w-3.5 text-zinc-500" aria-hidden="true" />
                 <span className="text-[10px] font-medium uppercase tracking-wider text-zinc-500">Current Streak</span>
               </div>
-              <span className="text-5xl font-bold tabular-nums text-zinc-50">
-                <AnimNum value={d.currentStreak} />
+              <span className="text-5xl font-bold tabular-nums text-zinc-50" aria-live="polite">
+                <AnimatedNumber value={d.currentStreak} />
               </span>
               <p className="mt-1 text-xs text-zinc-600">consecutive days</p>
-              <div className="mt-3 flex gap-1">
+              <div className="mt-3 flex gap-1" aria-hidden="true">
                 {Array.from({ length: Math.min(d.currentStreak, 7) }).map((_, i) => (
                   <motion.div
                     key={i}
@@ -345,7 +342,7 @@ export function LifeDashboard() {
       {/* Time Metrics Grid - 8 cards */}
       <StaggerItem className="mb-6">
         <div className="mb-3 flex items-center gap-2">
-          <Clock className="h-3.5 w-3.5 text-zinc-500" />
+          <Clock className="h-3.5 w-3.5 text-zinc-500" aria-hidden="true" />
           <h3 className="text-xs font-medium uppercase tracking-wider text-zinc-500">Time Metrics</h3>
         </div>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
@@ -364,15 +361,13 @@ export function LifeDashboard() {
       <StaggerItem>
         <div className="grid gap-4 lg:grid-cols-2">
           {/* Hourly Focus Chart */}
-          <motion.div
-            initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4, duration: 0.5, ease: EASE }}
-          >
+          <motion.div variants={fadeInUp} initial="hidden" animate="visible">
             <Card className="card-glow glass-card glass-glow-edge border-white/[0.06] bg-white/[0.02]">
-              <CardContent className="p-5">
+              <CardContent className="p-4 sm:p-5">
                 <div className="mb-4 flex items-center gap-2">
-                  <BarChart3 className="h-3.5 w-3.5 text-zinc-500" />
+                  <BarChart3 className="h-3.5 w-3.5 text-zinc-500" aria-hidden="true" />
                   <h3 className="text-xs font-medium uppercase tracking-wider text-zinc-500">Hourly Focus</h3>
-                  <span className="ml-auto text-[10px] text-zinc-600">{d.todayFocusMinutes}m today</span>
+                  <span className="ml-auto text-[10px] text-zinc-600" aria-live="polite">{d.todayFocusMinutes}m today</span>
                 </div>
                 <HourlyChart data={d.hourlyDistribution} />
               </CardContent>
@@ -380,13 +375,11 @@ export function LifeDashboard() {
           </motion.div>
 
           {/* Category Breakdown */}
-          <motion.div
-            initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5, duration: 0.5, ease: EASE }}
-          >
+          <motion.div variants={fadeInUp} initial="hidden" animate="visible">
             <Card className="card-glow glass-card glass-glow-edge border-white/[0.06] bg-white/[0.02]">
-              <CardContent className="p-5">
+              <CardContent className="p-4 sm:p-5">
                 <div className="mb-4 flex items-center gap-2">
-                  <Activity className="h-3.5 w-3.5 text-zinc-500" />
+                  <Activity className="h-3.5 w-3.5 text-zinc-500" aria-hidden="true" />
                   <h3 className="text-xs font-medium uppercase tracking-wider text-zinc-500">Activity Categories</h3>
                 </div>
                 <CategoryBar categories={d.categoryBreakdown} />

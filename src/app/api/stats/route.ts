@@ -1,21 +1,14 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { getAuthUserId } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
+import { calculateStreak, calculateFocusScore } from "@/lib/analytics";
+import { logError } from "@/lib/logger";
 import { format, subDays, startOfDay, endOfDay, isSameDay, startOfWeek } from "date-fns";
 
-async function getUserId(): Promise<string | NextResponse> {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-  const user = session.user as Record<string, unknown>;
-  return user.id as string;
-}
-
 export async function GET() {
-  const userId = await getUserId();
-  if (userId instanceof NextResponse) return userId;
+  const userIdOr401 = await getAuthUserId();
+  if (userIdOr401 instanceof NextResponse) return userIdOr401;
+  const userId = userIdOr401;
 
   try {
     const now = new Date();
@@ -23,13 +16,27 @@ export async function GET() {
     const todayEnd = endOfDay(now);
     const weekAgo = subDays(now, 6);
 
-    const sessions = await db.focusSession.findMany({
-      where: {
-        userId,
-        startedAt: { gte: weekAgo },
-      },
-      orderBy: { startedAt: "desc" },
-    });
+    const [sessions, recentSessions, activeMission, streak] = await Promise.all([
+      db.focusSession.findMany({
+        where: {
+          userId,
+          startedAt: { gte: weekAgo },
+        },
+        select: { id: true, duration: true, startedAt: true, missionId: true },
+        orderBy: { startedAt: "desc" },
+      }),
+      db.focusSession.findMany({
+        where: { userId },
+        include: { mission: { select: { id: true, title: true } } },
+        orderBy: { startedAt: "desc" },
+        take: 10,
+      }),
+      db.mission.findFirst({
+        where: { userId, status: "active" },
+        include: { focusSessions: true },
+      }),
+      calculateStreak(userId),
+    ]);
 
     const todaySessions = sessions.filter((s) =>
       isSameDay(new Date(s.startedAt), now)
@@ -55,54 +62,12 @@ export async function GET() {
       };
     });
 
-    let streak = 0;
-    let checkDate = startOfDay(now);
-    const allSessions = await db.focusSession.findMany({
-      where: { userId },
-      orderBy: { startedAt: "desc" },
-      select: { startedAt: true },
-    });
-
-    const daysWithSessions = new Set(
-      allSessions.map((s) => format(startOfDay(new Date(s.startedAt)), "yyyy-MM-dd"))
-    );
-
-    while (daysWithSessions.has(format(checkDate, "yyyy-MM-dd"))) {
-      streak++;
-      checkDate = subDays(checkDate, 1);
-    }
-
-    // Calculate total all-time minutes for streak scoring context
     const totalMinutes = Math.round(
-      allSessions.reduce((acc, s) => acc + s.duration, 0) / 60
+      sessions.reduce((acc, s) => acc + s.duration, 0) / 60
     );
 
+    const focusScore = calculateFocusScore(todayMinutes, weeklyMinutes, streak);
 
-    const focusScore =
-      weeklyMinutes > 0
-        ? Math.min(
-            100,
-            Math.round(
-              (Math.min(todayMinutes, 480) / 480) * 40 +
-                (Math.min(weeklyMinutes, 2400) / 2400) * 40 +
-                (Math.min(streak, 30) / 30) * 20
-            )
-          )
-        : 0;
-
-    const recentSessions = await db.focusSession.findMany({
-      where: { userId },
-      include: { mission: { select: { id: true, title: true } } },
-      orderBy: { startedAt: "desc" },
-      take: 10,
-    });
-
-    const activeMission = await db.mission.findFirst({
-      where: { userId, status: "active" },
-      include: { focusSessions: true },
-    });
-
-    // --- New: achievement progress count, today's reflection, weekly missions completed ---
     const weekStartMon = startOfWeek(now, { weekStartsOn: 1 });
     const [
       unlockedAchievementCount,
@@ -133,9 +98,9 @@ export async function GET() {
       totalFocusMinutes: totalMinutes,
       currentStreak: streak,
       focusScore,
-      totalSessions: allSessions.length,
+      totalSessions: sessions.length,
       todaySessions: todaySessions.length,
-      avgSessionMinutes: allSessions.length > 0 ? Math.round(totalMinutes / allSessions.length) : 0,
+      avgSessionMinutes: sessions.length > 0 ? Math.round(totalMinutes / sessions.length) : 0,
       bestDay: weekDays.reduce((best, d) => d.minutes > best.minutes ? d : best, weekDays[0]),
       weeklyData: weekDays,
       recentSessions,
@@ -145,7 +110,8 @@ export async function GET() {
       weeklyMissionsCompleted,
       totalMissionsCompleted: totalMissionCount,
     });
-  } catch {
+  } catch (e) {
+    logError("stats", "Failed to fetch stats", e);
     return NextResponse.json(
       { error: "Failed to fetch stats" },
       { status: 500 }

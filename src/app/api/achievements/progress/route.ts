@@ -1,21 +1,13 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getAuthUserId } from '@/lib/auth-utils';
 import { db } from '@/lib/db';
+import { calculateStreak } from '@/lib/analytics';
+import { logError } from '@/lib/logger';
 import {
   format,
   startOfDay,
   subDays,
 } from 'date-fns';
-
-async function getUserId(): Promise<string | NextResponse> {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-  const user = session.user as Record<string, unknown>;
-  return user.id as string;
-}
 
 // Achievement catalog with metadata and XP rewards (50-500 range)
 type AchievementDef = {
@@ -90,8 +82,9 @@ function clampPct(pct: number): number {
 }
 
 export async function GET() {
-  const userId = await getUserId();
-  if (userId instanceof NextResponse) return userId;
+  const userIdOr401 = await getAuthUserId();
+  if (userIdOr401 instanceof NextResponse) return userIdOr401;
+  const userId = userIdOr401;
 
   try {
     const now = new Date();
@@ -100,6 +93,8 @@ export async function GET() {
       allSessions,
       allMissionsCount,
       unlockedAchievements,
+      currentStreak,
+      bestStreak,
     ] = await Promise.all([
       db.focusSession.findMany({
         where: { userId, type: { not: 'break' } },
@@ -118,6 +113,13 @@ export async function GET() {
         where: { userId },
         select: { type: true, unlockedAt: true },
       }),
+      calculateStreak(userId),
+      // Calculate best streak from all sessions
+      db.focusSession.findMany({
+        where: { userId, type: { not: 'break' } },
+        select: { startedAt: true },
+        orderBy: { startedAt: 'asc' },
+      }),
     ]);
 
     const unlockedMap = new Map(
@@ -129,24 +131,12 @@ export async function GET() {
     const totalMinutes = allSessions.reduce((acc, s) => acc + s.duration, 0);
     const totalHours = totalMinutes / 60;
 
-    // Current streak (consecutive days with sessions, walking back from today)
+    // Best streak: walk through all session days in chronological order
     const daysWithSessions = new Set(
-      allSessions.map((s) => format(startOfDay(new Date(s.startedAt)), 'yyyy-MM-dd'))
+      bestStreak.map((s) => format(startOfDay(new Date(s.startedAt)), 'yyyy-MM-dd'))
     );
-    let currentStreak = 0;
-    let checkDate = startOfDay(now);
-    if (!daysWithSessions.has(format(checkDate, 'yyyy-MM-dd'))) {
-      checkDate = subDays(checkDate, 1);
-    }
-    while (daysWithSessions.has(format(checkDate, 'yyyy-MM-dd'))) {
-      currentStreak++;
-      checkDate = subDays(checkDate, 1);
-    }
-
-    // Best streak ever: walk through all session days in chronological order,
-    // counting longest run of consecutive calendar days.
     const sortedDays = Array.from(daysWithSessions).sort();
-    let bestStreak = 0;
+    let bestStreakCount = 0;
     let run = 0;
     let prev: number | null = null;
     for (const dayStr of sortedDays) {
@@ -161,7 +151,7 @@ export async function GET() {
       } else {
         run = 1;
       }
-      bestStreak = Math.max(bestStreak, run);
+      bestStreakCount = Math.max(bestStreakCount, run);
       prev = t;
     }
 
@@ -179,15 +169,12 @@ export async function GET() {
         longestSingleSessionMinutes = sessionMinutes;
       }
 
-      // Night owl: session ended between 00:00 and 05:00
       if (end.getHours() >= 0 && end.getHours() < 5) {
         nightOwlFound = true;
       }
-      // Early bird: session started before 7:00 AM
       if (start.getHours() < 7) {
         earlyBirdFound = true;
       }
-      // Deep worker: session >= 90 minutes
       if (sessionMinutes >= 90) {
         deepWorkerFound = true;
       }
@@ -211,7 +198,6 @@ export async function GET() {
         }
         case 'streak_7': {
           progressMax = 7;
-          // If already unlocked, use best streak for display; otherwise current streak
           progress = unlockedAt ? Math.max(currentStreak, 7) : Math.min(currentStreak, 7);
           if (progress < progressMax) {
             const daysLeft = 7 - currentStreak;
@@ -221,7 +207,7 @@ export async function GET() {
         }
         case 'streak_30': {
           progressMax = 30;
-          progress = unlockedAt ? Math.max(bestStreak, 30) : Math.min(currentStreak, 30);
+          progress = unlockedAt ? Math.max(bestStreakCount, 30) : Math.min(currentStreak, 30);
           if (progress < progressMax) {
             const daysLeft = 30 - currentStreak;
             estimatedRemaining = `${daysLeft} day${daysLeft === 1 ? '' : 's'}`;
@@ -254,7 +240,7 @@ export async function GET() {
           break;
         }
         case 'deep_worker': {
-          progressMax = 90; // minutes
+          progressMax = 90;
           progress = Math.min(Math.floor(longestSingleSessionMinutes), 90);
           if (progress < progressMax) {
             const minutesLeft = Math.ceil(90 - longestSingleSessionMinutes);
@@ -297,7 +283,7 @@ export async function GET() {
 
     return NextResponse.json({ achievements });
   } catch (e) {
-    console.error('[achievements/progress] error', e);
+    logError("achievements/progress", "Failed to compute achievement progress", e);
     return NextResponse.json(
       { error: 'Failed to compute achievement progress' },
       { status: 500 }

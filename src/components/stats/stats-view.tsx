@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import {
   Clock,
@@ -17,39 +17,62 @@ import {
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { AnimatedNumber } from '@/components/premium/animated-number';
 import { useAppStore } from '@/stores/app-store';
-import { cn } from '@/lib/utils';
+import { cn, formatDuration, formatDurationCompact } from '@/lib/utils';
+import { staggerContainer, staggerItem } from '@/lib/animations';
 import type { WeeklyData } from '@/types';
 
-const container = {
-  hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.07 } },
-};
-
-const item = {
-  hidden: { opacity: 0, y: 14 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.25, 0.1, 0.25, 1] } },
-};
-
-// ---- Animated Number (CSS-based to avoid setState-in-effect) ----
-function AnimatedNumber({ value, className }: { value: number; className?: string }) {
-  return <span className={className}>{value}</span>;
-}
+// ---- Stat Card ----
+const StatCard = React.memo(function StatCard({ icon: Icon, label, value, unit, sub, progressVal }: {
+  icon: typeof Clock;
+  label: string;
+  value: string | number;
+  unit?: string;
+  sub?: string;
+  progressVal?: number;
+}) {
+  const isNumber = typeof value === 'number';
+  return (
+    <motion.div whileHover={{ y: -2, transition: { duration: 0.2 } }}>
+      <Card className="card-glow border-white/[0.06] bg-white/[0.02]">
+        <CardContent className="p-4 sm:p-5">
+          <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-500/[0.08]" aria-hidden="true">
+            <Icon className="h-4 w-4 text-emerald-400/80" />
+          </div>
+          <p className="text-[11px] font-medium uppercase tracking-wider text-zinc-500">{label}</p>
+          <div className="mt-1 flex items-baseline gap-1" aria-live="polite">
+            {isNumber ? (
+              <AnimatedNumber value={value} className="text-2xl font-semibold tabular-nums tracking-tight text-zinc-50" />
+            ) : (
+              <span className="text-2xl font-semibold tabular-nums tracking-tight text-zinc-50">{value}</span>
+            )}
+            {unit && <span className="text-xs text-zinc-600">{unit}</span>}
+          </div>
+          {sub && <p className="mt-1 text-[11px] text-zinc-600">{sub}</p>}
+          {progressVal !== undefined && (
+            <div className="mt-3 h-1 w-full overflow-hidden rounded-full bg-white/[0.04]" role="progressbar" aria-valuenow={progressVal} aria-valuemin={0} aria-valuemax={100} aria-label={`${label} progress`}>
+              <motion.div
+                initial={{ width: 0 }}
+                animate={{ width: `${progressVal}%` }}
+                transition={{ duration: 1.2, delay: 0.4 }}
+                className="h-full rounded-full bg-gradient-to-r from-emerald-500/80 to-teal-400/60"
+              />
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </motion.div>
+  );
+});
 
 // ---- Enhanced Bar Chart ----
-function MiniBarChart({ data, today }: { data: WeeklyData[]; today: string }) {
+const MiniBarChart = React.memo(function MiniBarChart({ data, today }: { data: WeeklyData[]; today: string }) {
   const maxMinutes = Math.max(...data.map((d) => d.minutes), 1);
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
 
   return (
-    <div className="flex h-52 items-end gap-2 sm:gap-3">
-      {/* Background grid lines */}
-      <div className="pointer-events-none absolute inset-0 flex flex-col justify-between pb-8">
-        {[0, 0.25, 0.5, 0.75].map((pct) => (
-          <div key={pct} className="w-full border-t border-white/[0.03]" style={{ marginTop: pct === 0 ? 'auto' : undefined }} />
-        ))}
-      </div>
-
+    <div className="flex h-52 items-end gap-2 sm:gap-3" role="img" aria-label="Weekly focus bar chart">
       {data.map((d, i) => {
         const isToday = d.day === today;
         const barHeight = Math.max((d.minutes / maxMinutes) * 100, 0);
@@ -61,24 +84,26 @@ function MiniBarChart({ data, today }: { data: WeeklyData[]; today: string }) {
             className="relative flex flex-1 flex-col items-center gap-2"
             onMouseEnter={() => setHoveredIdx(i)}
             onMouseLeave={() => setHoveredIdx(null)}
+            aria-label={`${d.day}: ${d.minutes} minutes`}
           >
             {/* Value tooltip on hover */}
             <motion.div
               initial={false}
               animate={{ opacity: isHovered ? 1 : 0, y: isHovered ? 0 : 4 }}
               className="mb-1 rounded-md bg-white/[0.06] px-2 py-1 text-[10px] font-medium tabular-nums text-zinc-300"
+              aria-hidden="true"
             >
               {d.minutes}m
             </motion.div>
 
             <div className="relative flex w-full justify-center">
               {/* Baseline */}
-              <div className="absolute bottom-0 h-1 w-8 rounded-full bg-white/[0.03] sm:w-10" />
+              <div className="absolute bottom-0 h-1 w-8 rounded-full bg-white/[0.03] sm:w-10" aria-hidden="true" />
               {/* Bar */}
               <motion.div
                 initial={{ height: 0 }}
                 animate={{ height: `${barHeight}%` }}
-                transition={{ duration: 0.7, delay: 0.15 + i * 0.06, ease: [0.25, 0.1, 0.25, 1] }}
+                transition={{ duration: 0.7, delay: 0.15 + i * 0.06 }}
                 className={cn(
                   'w-8 rounded-t-lg sm:w-10 transition-all duration-200',
                   d.minutes > 0
@@ -97,6 +122,7 @@ function MiniBarChart({ data, today }: { data: WeeklyData[]; today: string }) {
                   animate={{ scale: 1 }}
                   transition={{ delay: 0.8 }}
                   className="absolute -bottom-3 h-1.5 w-1.5 rounded-full bg-emerald-400"
+                  aria-hidden="true"
                 />
               )}
             </div>
@@ -109,62 +135,31 @@ function MiniBarChart({ data, today }: { data: WeeklyData[]; today: string }) {
       })}
     </div>
   );
-}
+});
 
-// ---- Stat Card ----
-function StatCard({ icon: Icon, label, value, unit, sub, progressVal }: {
-  icon: typeof Clock;
-  label: string;
-  value: string | number;
-  unit?: string;
-  sub?: string;
-  progressVal?: number;
-}) {
-  const isNumber = typeof value === 'number';
+// ---- Loading Skeleton ----
+function StatsSkeleton() {
   return (
-    <motion.div whileHover={{ y: -2, transition: { duration: 0.2 } }}>
-      <Card className="card-glow border-white/[0.06] bg-white/[0.02]">
-        <CardContent className="p-5">
-          <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-500/[0.08]">
-            <Icon className="h-4 w-4 text-emerald-400/80" />
-          </div>
-          <p className="text-[11px] font-medium uppercase tracking-wider text-zinc-500">{label}</p>
-          <div className="mt-1 flex items-baseline gap-1">
-            {isNumber ? (
-              <AnimatedNumber value={value} className="text-2xl font-semibold tabular-nums tracking-tight text-zinc-50" />
-            ) : (
-              <span className="text-2xl font-semibold tabular-nums tracking-tight text-zinc-50">{value}</span>
-            )}
-            {unit && <span className="text-xs text-zinc-600">{unit}</span>}
-          </div>
-          {sub && <p className="mt-1 text-[11px] text-zinc-600">{sub}</p>}
-          {progressVal !== undefined && (
-            <div className="mt-3 h-1 w-full overflow-hidden rounded-full bg-white/[0.04]">
-              <motion.div
-                initial={{ width: 0 }}
-                animate={{ width: `${progressVal}%` }}
-                transition={{ duration: 1.2, delay: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
-                className="h-full rounded-full bg-gradient-to-r from-emerald-500/80 to-teal-400/60"
-              />
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    </motion.div>
+    <div className="app-grid-bg min-h-full -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+      <div className="mb-10 pt-2">
+        <div className="h-8 w-24 rounded bg-white/[0.03] animate-pulse" />
+        <div className="mt-1 h-4 w-48 rounded bg-white/[0.02] animate-pulse" />
+      </div>
+      <div className="mb-10 grid grid-cols-2 gap-3 lg:grid-cols-3">
+        {[0, 1, 2, 3, 4, 5].map((i) => (
+          <div key={i} className="h-32 rounded-xl bg-white/[0.02] animate-pulse" />
+        ))}
+      </div>
+      <div className="h-48 rounded-xl bg-white/[0.02] animate-pulse" />
+    </div>
   );
 }
 
-function formatMinutes(minutes: number): string {
-  if (minutes >= 60) {
-    const h = Math.floor(minutes / 60);
-    const m = minutes % 60;
-    return m > 0 ? `${h}h ${m}m` : `${h}h`;
-  }
-  return `${minutes}m`;
-}
-
 export function StatsView() {
-  const { stats, setStats, weeklyData, setWeeklyData } = useAppStore();
+  const stats = useAppStore(s => s.stats);
+  const setStats = useAppStore(s => s.setStats);
+  const weeklyData = useAppStore(s => s.weeklyData);
+  const setWeeklyData = useAppStore(s => s.setWeeklyData);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -197,15 +192,15 @@ export function StatsView() {
   useEffect(() => { fetchStats(); }, [fetchStats]);
 
   if (loading) {
-    return <div className="flex h-64 items-center justify-center"><Loader2 className="h-5 w-5 animate-spin text-zinc-600" /></div>;
+    return <StatsSkeleton />;
   }
 
   if (error) {
     return (
-      <div className="flex h-64 flex-col items-center justify-center gap-3">
-        <AlertCircle className="h-8 w-8 text-red-400/60" />
+      <div className="flex h-64 flex-col items-center justify-center gap-3" role="alert" aria-live="polite">
+        <AlertCircle className="h-8 w-8 text-red-400/60" aria-hidden="true" />
         <p className="text-sm text-zinc-400">{error}</p>
-        <Button variant="ghost" size="sm" onClick={fetchStats}>Try again</Button>
+        <Button variant="ghost" size="sm" onClick={fetchStats} aria-label="Retry loading statistics">Try again</Button>
       </div>
     );
   }
@@ -216,10 +211,10 @@ export function StatsView() {
   const bestDay = s?.bestDay;
 
   return (
-    <motion.div variants={container} initial="hidden" animate="visible" className="app-grid-bg min-h-full -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
-      <motion.div variants={item} className="mb-10 pt-2">
+    <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="app-grid-bg min-h-full -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+      <motion.div variants={staggerItem} className="mb-10 pt-2">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/[0.08]">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/[0.08]" aria-hidden="true">
             <BarChart3 className="h-5 w-5 text-emerald-400/80" />
           </div>
           <div>
@@ -230,7 +225,7 @@ export function StatsView() {
       </motion.div>
 
       {/* 6 Stat Cards */}
-      <motion.div variants={item} className="mb-10 grid grid-cols-2 gap-3 lg:grid-cols-3">
+      <motion.div variants={staggerItem} className="mb-10 grid grid-cols-2 gap-3 lg:grid-cols-3">
         <StatCard icon={Clock} label="Today" value={s?.todayFocusMinutes || 0} unit="min" sub={`${s?.todaySessions || 0} sessions`} />
         <StatCard icon={TrendingUp} label="This Week" value={s?.weeklyFocusMinutes || 0} unit="min" sub={`${totalWeekSessions} sessions`} />
         <StatCard icon={Activity} label="All Time" value={s?.totalFocusMinutes || 0} unit="min" sub={`${s?.totalSessions || 0} sessions`} />
@@ -240,11 +235,11 @@ export function StatsView() {
       </motion.div>
 
       {/* Weekly Chart */}
-      <motion.div variants={item}>
+      <motion.div variants={staggerItem}>
         <Card className="card-glow border-white/[0.06] bg-white/[0.02]">
           <CardHeader className="pb-2">
             <div className="flex items-center gap-2">
-              <CalendarDays className="h-3.5 w-3.5 text-zinc-500" />
+              <CalendarDays className="h-3.5 w-3.5 text-zinc-500" aria-hidden="true" />
               <CardTitle className="text-xs font-medium uppercase tracking-wider text-zinc-500">Weekly Overview</CardTitle>
             </div>
           </CardHeader>
@@ -261,21 +256,21 @@ export function StatsView() {
       </motion.div>
 
       {/* Bottom Row: Best Day + All-time Summary */}
-      <motion.div variants={item} className="mt-4 grid gap-4 lg:grid-cols-2">
+      <motion.div variants={staggerItem} className="mt-4 grid gap-4 lg:grid-cols-2">
         {/* Best Day Card */}
         <Card className={cn(
           'card-glow overflow-hidden',
           bestDay && bestDay.minutes > 0 ? 'border-emerald-500/15' : 'border-white/[0.06]'
         )}>
           {bestDay && bestDay.minutes > 0 && (
-            <div className="absolute left-0 top-0 h-full w-[2px] bg-gradient-to-b from-emerald-400/60 to-emerald-500/20" />
+            <div className="absolute left-0 top-0 h-full w-[2px] bg-gradient-to-b from-emerald-400/60 to-emerald-500/20" aria-hidden="true" />
           )}
-          <CardContent className="p-5">
+          <CardContent className="p-4 sm:p-5">
             <div className="flex items-center gap-3">
               <div className={cn(
                 'flex h-10 w-10 items-center justify-center rounded-xl',
                 bestDay && bestDay.minutes > 0 ? 'bg-emerald-500/10' : 'bg-white/[0.03]'
-              )}>
+              )} aria-hidden="true">
                 <Trophy className={cn(
                   'h-5 w-5',
                   bestDay && bestDay.minutes > 0 ? 'text-emerald-400' : 'text-zinc-700'
@@ -284,7 +279,7 @@ export function StatsView() {
               <div className="flex-1">
                 <p className="text-[11px] font-medium uppercase tracking-wider text-zinc-500">Best Day This Week</p>
                 {bestDay && bestDay.minutes > 0 ? (
-                  <div className="mt-1 flex items-baseline gap-2">
+                  <div className="mt-1 flex items-baseline gap-2" aria-live="polite">
                     <span className="text-xl font-semibold tabular-nums text-zinc-50">{bestDay.minutes}m</span>
                     <span className="text-xs text-zinc-500">on {bestDay.day}</span>
                     <span className="text-xs text-zinc-600">· {bestDay.sessions} session{bestDay.sessions !== 1 ? 's' : ''}</span>
@@ -299,22 +294,22 @@ export function StatsView() {
 
         {/* All-time Summary */}
         <Card className="card-glow border-white/[0.06] bg-white/[0.02]">
-          <CardContent className="p-5">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/[0.08]">
+          <CardContent className="p-4 sm:p-5">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/[0.08]" aria-hidden="true">
                   <Timer className="h-5 w-5 text-emerald-400/80" />
                 </div>
                 <div>
                   <p className="text-[11px] font-medium uppercase tracking-wider text-zinc-500">Total Sessions</p>
-                  <p className="mt-1 text-xl font-semibold tabular-nums text-zinc-50">{s?.totalSessions || 0}</p>
+                  <p className="mt-1 text-xl font-semibold tabular-nums text-zinc-50" aria-live="polite">{s?.totalSessions || 0}</p>
                 </div>
               </div>
               <div className="flex items-center gap-2.5">
                 <div className="text-right">
                   <p className="text-[11px] font-medium uppercase tracking-wider text-zinc-500">Total Time</p>
-                  <p className="mt-1 text-xl font-semibold tabular-nums text-zinc-50">
-                    {formatMinutes(s?.totalFocusMinutes || 0)}
+                  <p className="mt-1 text-xl font-semibold tabular-nums text-zinc-50" aria-live="polite">
+                    {formatDuration(s?.totalFocusMinutes || 0)}
                   </p>
                 </div>
               </div>

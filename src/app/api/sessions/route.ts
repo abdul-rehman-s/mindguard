@@ -1,21 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { getAuthUserId } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { createSessionSchema } from "@/lib/validators";
-
-async function getUserId(): Promise<string | NextResponse> {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-  const user = session.user as Record<string, unknown>;
-  return user.id as string;
-}
+import { logError } from "@/lib/logger";
 
 export async function GET(request: NextRequest) {
-  const userId = await getUserId();
-  if (userId instanceof NextResponse) return userId;
+  const userIdOr401 = await getAuthUserId();
+  if (userIdOr401 instanceof NextResponse) return userIdOr401;
+  const userId = userIdOr401;
 
   try {
     const { searchParams } = new URL(request.url);
@@ -41,7 +33,8 @@ export async function GET(request: NextRequest) {
     const totalPages = Math.ceil(total / limit);
 
     return NextResponse.json({ sessions, total, page, limit, totalPages });
-  } catch {
+  } catch (e) {
+    logError("sessions", "Failed to fetch sessions", e);
     return NextResponse.json(
       { error: "Failed to fetch sessions" },
       { status: 500 }
@@ -50,12 +43,27 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const userId = await getUserId();
-  if (userId instanceof NextResponse) return userId;
+  const userIdOr401 = await getAuthUserId();
+  if (userIdOr401 instanceof NextResponse) return userIdOr401;
+  const userId = userIdOr401;
 
   try {
     const body = await request.json();
     const validated = createSessionSchema.parse(body);
+
+    // Security: validate that missionId belongs to the user before creating a session
+    if (validated.missionId) {
+      const mission = await db.mission.findFirst({
+        where: { id: validated.missionId, userId },
+        select: { id: true },
+      });
+      if (!mission) {
+        return NextResponse.json(
+          { error: "Mission not found or does not belong to you" },
+          { status: 403 }
+        );
+      }
+    }
 
     const session = await db.focusSession.create({
       data: {
@@ -79,6 +87,7 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+    logError("sessions", "Failed to create session", error);
     return NextResponse.json(
       { error: "Failed to create session" },
       { status: 500 }

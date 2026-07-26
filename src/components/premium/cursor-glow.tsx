@@ -6,11 +6,15 @@ import { motion, useMotionValue, useSpring, AnimatePresence } from 'framer-motio
 const CURSOR_SIZE = 16;
 const GLOW_SIZE = 32;
 
-const isTouchDevice = typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0);
-
 export function CursorGlow() {
   const [visible, setVisible] = useState(false);
   const [isPointer, setIsPointer] = useState(false);
+  const [reducedMotion, setReducedMotion] = useState(() =>
+    typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  );
+  const [isDesktopPointer, setIsDesktopPointer] = useState(() =>
+    typeof window !== 'undefined' && window.matchMedia('(pointer: fine)').matches
+  );
   const cursorX = useMotionValue(-100);
   const cursorY = useMotionValue(-100);
   const glowX = useMotionValue(-100);
@@ -28,7 +32,18 @@ export function CursorGlow() {
   const posRef = useRef({ x: -100, y: -100 });
 
   useEffect(() => {
-    if (isTouchDevice) return;
+    // Listen for prefers-reduced-motion changes
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const onChange = (e: MediaQueryListEvent) => setReducedMotion(e.matches);
+    mq.addEventListener('change', onChange);
+
+    // Listen for desktop pointer changes
+    const pointerMq = window.matchMedia('(pointer: fine)');
+    const onPointerChange = (e: MediaQueryListEvent) => setIsDesktopPointer(e.matches);
+    pointerMq.addEventListener('change', onPointerChange);
+
+    // Touch devices and reduced motion users should not see cursor glow
+    if (!isDesktopPointer || reducedMotion) return;
 
     const handleMove = (e: MouseEvent) => {
       posRef.current = { x: e.clientX, y: e.clientY };
@@ -71,16 +86,23 @@ export function CursorGlow() {
       document.removeEventListener('mouseover', handleOver);
       document.removeEventListener('mouseleave', handleLeave);
       document.removeEventListener('mouseenter', handleEnter);
+      mq.removeEventListener('change', onChange);
+      pointerMq.removeEventListener('change', onPointerChange);
     };
-  }, [cursorX, cursorY, glowX, glowY, clickScale, visible]);
+  }, [cursorX, cursorY, glowX, glowY, clickScale, visible, isDesktopPointer, reducedMotion]);
 
-  if (isTouchDevice) return null;
+  // Don't render on touch devices or when reduced motion is preferred
+  if (!isDesktopPointer || reducedMotion) return null;
 
   return (
     <>
+      {/* Only hide default cursor on desktop pointer devices, restore for accessibility */}
       <style>{`
-        * { cursor: none !important; }
+        @media (pointer: fine) and (not (prefers-reduced-motion: reduce)) {
+          * { cursor: none !important; }
+        }
         @media (pointer: coarse) { * { cursor: auto !important; } }
+        @media (prefers-reduced-motion: reduce) { * { cursor: auto !important; } }
       `}</style>
 
       <AnimatePresence>
@@ -101,6 +123,7 @@ export function CursorGlow() {
                 opacity: isPointer ? 0.15 : 0.08,
               }}
               transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              aria-hidden="true"
             >
               <div
                 className="h-full w-full rounded-full"
@@ -126,6 +149,7 @@ export function CursorGlow() {
                 opacity: 1,
               }}
               transition={{ type: 'spring', damping: 25, stiffness: 400 }}
+              aria-hidden="true"
             >
               <div
                 className="h-full w-full rounded-full border border-white/60 transition-colors duration-150"

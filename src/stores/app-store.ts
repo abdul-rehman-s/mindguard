@@ -2,7 +2,7 @@ import { create } from "zustand";
 import type { AppView, DashboardStats, WeeklyData, FocusModeState, OnboardingData, CoachData, WeeklyWrapped, LifeDashboardData, DailyReviewData, NotificationItem } from "@/types";
 import type { Mission, FocusSession, DailyReflection, Achievement } from "@prisma/client";
 
-type SafeUser = {
+export type SafeUser = {
   id: string;
   email: string;
   name?: string | null;

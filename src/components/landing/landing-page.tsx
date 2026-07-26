@@ -29,7 +29,8 @@ import {
 import { useAppStore } from '@/stores/app-store';
 import { registerSchema, loginSchema } from '@/lib/validators';
 import { cn } from '@/lib/utils';
-import type { SafeUser } from '@/types';
+import { staggerContainer as sharedStaggerContainer, staggerItem as sharedStaggerItem, fadeInUp as sharedFadeInUp, EASE, scaleIn as sharedScaleIn } from '@/lib/animations';
+import type { SafeUser } from '@/stores/app-store';
 
 /* ─── Data ─── */
 
@@ -107,6 +108,8 @@ const testimonials = [
 
 /* ─── Animation variants ─── */
 
+// Using shared animation variants from @/lib/animations where possible
+// Landing page uses custom hero variants for unique stagger timing
 const heroContainer = {
   hidden: { opacity: 0 },
   visible: {
@@ -120,44 +123,14 @@ const heroItem = {
   visible: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.7, ease: [0.22, 1, 0.36, 1] },
+    transition: { duration: 0.7, ease: EASE },
   },
 };
 
-const sectionFade = {
-  hidden: { opacity: 0, y: 40 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.7, ease: [0.22, 1, 0.36, 1] },
-  },
-};
-
-const staggerContainer = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: { staggerChildren: 0.18, delayChildren: 0.1 },
-  },
-};
-
-const staggerItem = {
-  hidden: { opacity: 0, y: 28 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.55, ease: [0.22, 1, 0.36, 1] },
-  },
-};
-
-const scaleIn = {
-  hidden: { opacity: 0, scale: 0.95 },
-  visible: {
-    opacity: 1,
-    scale: 1,
-    transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] },
-  },
-};
+const sectionFade = sharedFadeInUp;
+const staggerContainer = sharedStaggerContainer;
+const staggerItem = sharedStaggerItem;
+const scaleIn = sharedScaleIn;
 
 /* ─── Floating particles config ─── */
 
@@ -173,7 +146,8 @@ const particles = Array.from({ length: 12 }, (_, i) => ({
 /* ═══════════════════════════════════════════════════════════════════ */
 
 export function LandingPage() {
-  const { setView, setUser } = useAppStore();
+  const setView = useAppStore(s => s.setView);
+  const setUser = useAppStore(s => s.setUser);
   const [isSignUp, setIsSignUp] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -308,6 +282,7 @@ export function LandingPage() {
               size="sm"
               className="text-sm text-zinc-400 hover:text-zinc-200"
               onClick={scrollToFeatures}
+              aria-label="View features section"
             >
               Features
             </Button>
@@ -316,6 +291,7 @@ export function LandingPage() {
               size="sm"
               className="text-sm text-zinc-400 hover:text-zinc-200"
               onClick={scrollToAuth}
+              aria-label="Go to sign in section"
             >
               Sign In
             </Button>
@@ -781,6 +757,7 @@ export function LandingPage() {
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
+                        aria-label={showPassword ? 'Hide password' : 'Show password'}
                         className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 transition-colors hover:text-zinc-400"
                       >
                         {showPassword ? (
@@ -799,6 +776,8 @@ export function LandingPage() {
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -5 }}
                         className="text-xs text-red-400"
+                        role="alert"
+                        aria-live="polite"
                       >
                         {error}
                       </motion.p>

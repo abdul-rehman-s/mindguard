@@ -1,25 +1,17 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { getAuthUserId } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
+import { logError } from "@/lib/logger";
 import { startOfDay, endOfDay } from "date-fns";
 import type { ActivityType, ActivityCategory, CreateActivityInput } from "@/types";
 
 const VALID_TYPES: ActivityType[] = ["focus", "idle", "distracted", "break", "deep_work", "app_usage", "website_usage"];
 const VALID_CATEGORIES: ActivityCategory[] = ["coding", "design", "communication", "entertainment", "research", "other"];
 
-async function getUserId(): Promise<string | NextResponse> {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-  const user = session.user as Record<string, unknown>;
-  return user.id as string;
-}
-
 export async function POST(req: Request) {
-  const userId = await getUserId();
-  if (userId instanceof NextResponse) return userId;
+  const userIdOr401 = await getAuthUserId();
+  if (userIdOr401 instanceof NextResponse) return userIdOr401;
+  const userId = userIdOr401;
 
   try {
     const body = (await req.json()) as CreateActivityInput;
@@ -54,14 +46,15 @@ export async function POST(req: Request) {
 
     return NextResponse.json(activity, { status: 201 });
   } catch (e) {
-    console.error("[activities] POST error", e);
+    logError("activities", "Failed to record activity", e);
     return NextResponse.json({ error: "Failed to record activity" }, { status: 500 });
   }
 }
 
 export async function GET(req: Request) {
-  const userId = await getUserId();
-  if (userId instanceof NextResponse) return userId;
+  const userIdOr401 = await getAuthUserId();
+  if (userIdOr401 instanceof NextResponse) return userIdOr401;
+  const userId = userIdOr401;
 
   try {
     const url = new URL(req.url);
@@ -95,20 +88,21 @@ export async function GET(req: Request) {
 
     return NextResponse.json({ activities });
   } catch (e) {
-    console.error("[activities] GET error", e);
+    logError("activities", "Failed to fetch activities", e);
     return NextResponse.json({ error: "Failed to fetch activities" }, { status: 500 });
   }
 }
 
 export async function DELETE() {
-  const userId = await getUserId();
-  if (userId instanceof NextResponse) return userId;
+  const userIdOr401 = await getAuthUserId();
+  if (userIdOr401 instanceof NextResponse) return userIdOr401;
+  const userId = userIdOr401;
 
   try {
     const count = await db.desktopActivity.deleteMany({ where: { userId } });
     return NextResponse.json({ deleted: count.count });
   } catch (e) {
-    console.error("[activities] DELETE error", e);
+    logError("activities", "Failed to delete activities", e);
     return NextResponse.json({ error: "Failed to delete activities" }, { status: 500 });
   }
 }

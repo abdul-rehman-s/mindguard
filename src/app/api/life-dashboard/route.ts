@@ -1,17 +1,9 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getAuthUserId } from '@/lib/auth-utils';
 import { db } from '@/lib/db';
+import { calculateStreak, calculateFocusScore } from '@/lib/analytics';
+import { logError } from '@/lib/logger';
 import { format, startOfDay, endOfDay, subDays, startOfWeek, isSameDay } from 'date-fns';
-
-async function getUserId(): Promise<string | NextResponse> {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-  const user = session.user as Record<string, unknown>;
-  return user.id as string;
-}
 
 const CATEGORY_COLORS: Record<string, string> = {
   coding: 'text-emerald-400',
@@ -23,8 +15,9 @@ const CATEGORY_COLORS: Record<string, string> = {
 };
 
 export async function GET() {
-  const userId = await getUserId();
-  if (userId instanceof NextResponse) return userId;
+  const userIdOr401 = await getAuthUserId();
+  if (userIdOr401 instanceof NextResponse) return userIdOr401;
+  const userId = userIdOr401;
 
   try {
     const now = new Date();
@@ -32,10 +25,11 @@ export async function GET() {
     const todayEnd = endOfDay(now);
     const weekAgo = subDays(now, 6);
 
-    const [sessions, activities, missions, user, achievements, reflections] = await Promise.all([
+    const [sessions, activities, missions, user, achievements, reflections, streak] = await Promise.all([
       // All sessions this week
       db.focusSession.findMany({
         where: { userId, startedAt: { gte: weekAgo } },
+        select: { id: true, duration: true, startedAt: true, missionId: true, type: true },
         orderBy: { startedAt: 'desc' },
       }),
       // Desktop activities today
@@ -45,7 +39,10 @@ export async function GET() {
         take: 50,
       }),
       // All missions
-      db.mission.findMany({ where: { userId } }),
+      db.mission.findMany({
+        where: { userId },
+        select: { id: true, status: true },
+      }),
       // User with XP/level
       db.user.findUnique({ where: { id: userId }, select: { xp: true, level: true } }),
       // Achievements
@@ -55,6 +52,7 @@ export async function GET() {
         where: { userId, date: { gte: format(weekAgo, 'yyyy-MM-dd') } },
         select: { date: true },
       }),
+      calculateStreak(userId),
     ]);
 
     // Today's sessions
@@ -63,7 +61,6 @@ export async function GET() {
     const weeklyMinutes = Math.round(sessions.reduce((a, s) => a + s.duration, 0) / 60);
 
     // Desktop activity calculations
-    const activityMinutes = activities.reduce((a, act) => a + act.duration, 0) / 60;
     const productiveMinutes = Math.round(
       activities.filter((a) => a.type === 'focus' || a.type === 'deep_work').reduce((a, act) => a + act.duration, 0) / 60
     );
@@ -76,46 +73,19 @@ export async function GET() {
     const deepWorkMinutes = Math.round(
       activities.filter((a) => a.type === 'deep_work').reduce((a, act) => a + act.duration, 0) / 60
     ) + Math.round(
-      todaySessions.filter((s) => s.duration >= 5400).reduce((a, s) => a + s.duration, 0) / 60 // 90min+
+      todaySessions.filter((s) => s.duration >= 5400).reduce((a, s) => a + s.duration, 0) / 60
     );
 
     // Total laptop time = all activities + all focus sessions
+    const activityMinutes = activities.reduce((a, act) => a + act.duration, 0) / 60;
     const totalLaptopMinutes = Math.round(activityMinutes + todayMinutes);
 
     // Mission completion rate
     const completedMissions = missions.filter((m) => m.status === 'completed').length;
     const missionCompletionRate = missions.length > 0 ? Math.round((completedMissions / missions.length) * 100) : 0;
 
-    // Streak
-    const allSessionsForStreak = await db.focusSession.findMany({
-      where: { userId },
-      orderBy: { startedAt: 'desc' },
-      select: { startedAt: true },
-    });
-    const daysWithSessions = new Set(
-      allSessionsForStreak.map((s) => format(startOfDay(new Date(s.startedAt)), 'yyyy-MM-dd'))
-    );
-    let streak = 0;
-    let checkDate = startOfDay(now);
-    while (daysWithSessions.has(format(checkDate, 'yyyy-MM-dd'))) {
-      streak++;
-      checkDate = subDays(checkDate, 1);
-    }
-
-    // Attention score
-    const totalAllMinutes = Math.round(
-      allSessionsForStreak.length > 0
-        ? (await db.focusSession.findMany({ where: { userId }, select: { duration: true } })).reduce((a, s) => a + s.duration, 0) / 60
-        : 0
-    );
-    const attentionScore =
-      weeklyMinutes > 0
-        ? Math.min(100, Math.round(
-            (Math.min(todayMinutes, 480) / 480) * 40 +
-            (Math.min(weeklyMinutes, 2400) / 2400) * 40 +
-            (Math.min(streak, 30) / 30) * 20
-          ))
-        : 0;
+    // Attention score (using shared helper)
+    const attentionScore = calculateFocusScore(todayMinutes, weeklyMinutes, streak);
 
     // Hourly distribution (today)
     const hourlyDistribution = Array.from({ length: 24 }, (_, h) => ({
@@ -170,7 +140,7 @@ export async function GET() {
       recentActivity,
     });
   } catch (e) {
-    console.error('[life-dashboard] error', e);
+    logError("life-dashboard", "Failed to load life dashboard", e);
     return NextResponse.json({ error: 'Failed to load life dashboard' }, { status: 500 });
   }
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import {
@@ -53,18 +53,11 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useAppStore } from '@/stores/app-store';
-import { cn } from '@/lib/utils';
+import { cn, formatDuration } from '@/lib/utils';
+import { staggerContainer, staggerItem, fadeInUp } from '@/lib/animations';
 import type { Mission, MissionPriority, MissionWithSessions } from '@/types';
 
-const container = {
-  hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.07 } },
-};
-
-const item = {
-  hidden: { opacity: 0, y: 14 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.25, 0.1, 0.25, 1] } },
-};
+// Using shared staggerContainer/staggerItem from @/lib/animations
 
 const priorityConfig: Record<MissionPriority, { label: string; class: string }> = {
   high: { label: 'High', class: 'bg-red-500/10 text-red-400 border-red-500/20' },
@@ -80,12 +73,7 @@ const missionTemplates = [
   { title: 'Project Launch', description: 'Push forward the most critical launch tasks.', priority: 'high' as MissionPriority, icon: Rocket },
 ];
 
-function formatDuration(seconds: number): string {
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  if (h > 0) return `${h}h ${m}m`;
-  return `${m}m`;
-}
+// formatDuration imported from @/lib/utils
 
 interface MissionFormProps {
   initialData?: { title: string; description?: string; priority: MissionPriority };
@@ -171,7 +159,9 @@ function MissionForm({ initialData, onSubmit, onCancel, loading, submitLabel }: 
 }
 
 export function MissionView() {
-  const { missions, setMissions, setView } = useAppStore();
+  const missions = useAppStore(s => s.missions);
+  const setMissions = useAppStore(s => s.setMissions);
+  const setView = useAppStore(s => s.setView);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showForm, setShowForm] = useState(false);
@@ -291,19 +281,19 @@ export function MissionView() {
   }
 
   return (
-    <motion.div variants={container} initial="hidden" animate="visible" className="app-grid-bg min-h-full -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+    <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="app-grid-bg min-h-full -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
       {/* Header */}
-      <motion.div variants={item} className="mb-10 pt-2">
+      <motion.div variants={staggerItem} className="mb-10 pt-2">
         <h2 className="text-[1.65rem] font-semibold tracking-[-0.02em] text-zinc-100">Missions</h2>
         <p className="mt-1.5 text-sm text-zinc-500">One active mission at a time. Stay focused on what matters.</p>
       </motion.div>
 
       {/* Quick Stats Row */}
-      <motion.div variants={item} className="mb-8 grid grid-cols-3 gap-3">
+      <motion.div variants={staggerItem} className="mb-8 grid grid-cols-3 gap-3">
         <Card className="card-glow border-white/[0.06] bg-white/[0.02]">
           <CardContent className="p-4">
             <div className="flex items-center gap-2.5">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/[0.08]">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/[0.08]" aria-hidden="true">
                 <Target className="h-4 w-4 text-emerald-400/80" />
               </div>
               <div>
@@ -316,7 +306,7 @@ export function MissionView() {
         <Card className="card-glow border-white/[0.06] bg-white/[0.02]">
           <CardContent className="p-4">
             <div className="flex items-center gap-2.5">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/[0.08]">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/[0.08]" aria-hidden="true">
                 <Check className="h-4 w-4 text-emerald-400/80" />
               </div>
               <div>
@@ -329,7 +319,7 @@ export function MissionView() {
         <Card className="card-glow border-white/[0.06] bg-white/[0.02]">
           <CardContent className="p-4">
             <div className="flex items-center gap-2.5">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/[0.08]">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/[0.08]" aria-hidden="true">
                 <Clock className="h-4 w-4 text-emerald-400/80" />
               </div>
               <div>
@@ -343,9 +333,9 @@ export function MissionView() {
 
       {/* Mission Templates */}
       {!hasActiveMission && (
-        <motion.div variants={item} className="mb-8">
+        <motion.div variants={staggerItem} className="mb-8">
           <div className="mb-3 flex items-center gap-2">
-            <Sparkles className="h-3.5 w-3.5 text-zinc-500" />
+            <Sparkles className="h-3.5 w-3.5 text-zinc-500" aria-hidden="true" />
             <h3 className="text-xs font-medium uppercase tracking-wider text-zinc-500">Quick Start Templates</h3>
           </div>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
@@ -377,9 +367,9 @@ export function MissionView() {
       )}
 
       {/* Create Button + Warning */}
-      <motion.div variants={item} className="mb-6 flex items-center justify-between">
+      <motion.div variants={staggerItem} className="mb-6 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Flame className="h-3.5 w-3.5 text-zinc-500" />
+          <Flame className="h-3.5 w-3.5 text-zinc-500" aria-hidden="true" />
           <h3 className="text-xs font-medium uppercase tracking-wider text-zinc-500">All Missions</h3>
         </div>
         <Button
@@ -394,7 +384,7 @@ export function MissionView() {
       </motion.div>
 
       {hasActiveMission && !showForm && !editingMission && (
-        <motion.div variants={item} className="mb-5 rounded-xl border border-amber-500/15 bg-amber-500/[0.04] px-4 py-3">
+        <motion.div variants={staggerItem} className="mb-5 rounded-xl border border-amber-500/15 bg-amber-500/[0.04] px-4 py-3">
           <p className="text-xs text-amber-400/80">
             <Sparkles className="mr-1.5 inline-block h-3 w-3" />
             Complete or archive your active mission before creating a new one.
@@ -403,7 +393,7 @@ export function MissionView() {
       )}
 
       {/* Mission List */}
-      <motion.div variants={item} className="flex flex-col gap-3">
+      <motion.div variants={staggerItem} className="flex flex-col gap-3">
         {missions.length === 0 && !showForm ? (
           <Card className="border-dashed border-white/[0.06] bg-white/[0.01]">
             <CardContent className="flex flex-col items-center justify-center py-16">
@@ -531,7 +521,7 @@ export function MissionView() {
                                 size="icon"
                                 className="h-8 w-8 text-zinc-600 hover:text-emerald-400 hover:bg-emerald-500/[0.06]"
                                 onClick={() => setView('timer')}
-                                title="Start focus session"
+                                aria-label="Start focus session"
                               >
                                 <Timer className="h-3.5 w-3.5" />
                               </Button>
@@ -540,7 +530,7 @@ export function MissionView() {
                                 size="icon"
                                 className="h-8 w-8 text-zinc-600 hover:text-emerald-400 hover:bg-emerald-500/[0.06]"
                                 onClick={() => handleComplete(mission.id)}
-                                title="Complete mission"
+                                aria-label="Complete mission"
                               >
                                 <Check className="h-3.5 w-3.5" />
                               </Button>
@@ -551,6 +541,7 @@ export function MissionView() {
                             size="icon"
                             className="h-8 w-8 text-zinc-600 hover:text-zinc-300 hover:bg-white/[0.04]"
                             onClick={() => setEditingMission(mission)}
+                            aria-label="Edit mission"
                           >
                             <Pencil className="h-3.5 w-3.5" />
                           </Button>
@@ -559,6 +550,7 @@ export function MissionView() {
                             size="icon"
                             className="h-8 w-8 text-zinc-600 hover:text-red-400 hover:bg-red-500/[0.06]"
                             onClick={() => setDeletingId(mission.id)}
+                            aria-label="Delete mission"
                           >
                             <Trash2 className="h-3.5 w-3.5" />
                           </Button>

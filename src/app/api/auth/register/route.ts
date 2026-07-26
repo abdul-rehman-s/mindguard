@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { hashPassword } from "@/lib/auth";
 import { registerSchema } from "@/lib/validators";
+import { logError } from "@/lib/logger";
 
 export async function POST(request: Request) {
   try {
@@ -10,6 +11,7 @@ export async function POST(request: Request) {
 
     const existing = await db.user.findUnique({
       where: { email: validated.email },
+      select: { id: true },
     });
 
     if (existing) {
@@ -28,6 +30,7 @@ export async function POST(request: Request) {
         password: hashedPassword,
         displayName: validated.name,
       },
+      select: { id: true, email: true, displayName: true },
     });
 
     return NextResponse.json(
@@ -45,6 +48,7 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
+    logError("auth/register", "Failed to register user", error);
     return NextResponse.json(
       { error: "Something went wrong" },
       { status: 500 }

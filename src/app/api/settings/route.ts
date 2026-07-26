@@ -1,21 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { getAuthUserId } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { updateSettingsSchema } from "@/lib/validators";
-
-async function getUserId(): Promise<string | NextResponse> {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-  const user = session.user as Record<string, unknown>;
-  return user.id as string;
-}
+import { logError } from "@/lib/logger";
 
 export async function GET() {
-  const userId = await getUserId();
-  if (userId instanceof NextResponse) return userId;
+  const userIdOr401 = await getAuthUserId();
+  if (userIdOr401 instanceof NextResponse) return userIdOr401;
+  const userId = userIdOr401;
 
   try {
     const user = await db.user.findUnique({
@@ -31,7 +23,8 @@ export async function GET() {
     }
 
     return NextResponse.json(user);
-  } catch {
+  } catch (e) {
+    logError("settings", "Failed to fetch settings", e);
     return NextResponse.json(
       { error: "Failed to fetch settings" },
       { status: 500 }
@@ -40,8 +33,9 @@ export async function GET() {
 }
 
 export async function PUT(request: NextRequest) {
-  const userId = await getUserId();
-  if (userId instanceof NextResponse) return userId;
+  const userIdOr401 = await getAuthUserId();
+  if (userIdOr401 instanceof NextResponse) return userIdOr401;
+  const userId = userIdOr401;
 
   try {
     const body = await request.json();
@@ -64,6 +58,7 @@ export async function PUT(request: NextRequest) {
         { status: 400 }
       );
     }
+    logError("settings", "Failed to update settings", error);
     return NextResponse.json(
       { error: "Failed to update settings" },
       { status: 500 }

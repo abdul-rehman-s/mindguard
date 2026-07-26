@@ -1,21 +1,13 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getAuthUserId } from '@/lib/auth-utils';
 import { db } from '@/lib/db';
+import { logError } from '@/lib/logger';
 import { format, startOfDay, endOfDay, subDays, startOfWeek, isSameDay } from 'date-fns';
 
-async function getUserId(): Promise<string | NextResponse> {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-  const user = session.user as Record<string, unknown>;
-  return user.id as string;
-}
-
 export async function GET() {
-  const userId = await getUserId();
-  if (userId instanceof NextResponse) return userId;
+  const userIdOr401 = await getAuthUserId();
+  if (userIdOr401 instanceof NextResponse) return userIdOr401;
+  const userId = userIdOr401;
 
   try {
     const now = new Date();
@@ -54,7 +46,7 @@ export async function GET() {
       ? Math.round(Math.max(...todaySessions.map((s) => s.duration)) / 60)
       : 0;
     const avgSessionLength = sessionCount > 0 ? Math.round(totalFocusMinutes / sessionCount) : 0;
-    const deepWorkSessions = todaySessions.filter((s) => s.duration >= 5400).length; // 90min+
+    const deepWorkSessions = todaySessions.filter((s) => s.duration >= 5400).length;
 
     // Mission summary
     const todayMissions = missions.filter((m) =>
@@ -119,7 +111,6 @@ export async function GET() {
     }));
 
     // Week comparison
-    const weekDaySessions = weekSessions.filter((s) => isSameDay(new Date(s.startedAt), now));
     const weekMinutes = Math.round(weekSessions.reduce((a, s) => a + s.duration, 0) / 60);
     const weekDays = new Set(weekSessions.map((s) => format(startOfDay(new Date(s.startedAt)), 'yyyy-MM-dd'))).size;
     const weekAvgMinutes = weekDays > 0 ? Math.round(weekMinutes / Math.min(weekDays, 7)) : 0;
@@ -205,7 +196,7 @@ export async function GET() {
       },
     });
   } catch (e) {
-    console.error('[daily-review] error', e);
+    logError("daily-review", "Failed to load daily review", e);
     return NextResponse.json({ error: 'Failed to load daily review' }, { status: 500 });
   }
 }

@@ -1,22 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { getAuthUserId } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { createReflectionSchema } from "@/lib/validators";
+import { logError } from "@/lib/logger";
 import { format } from "date-fns";
 
-async function getUserId(): Promise<string | NextResponse> {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-  const user = session.user as Record<string, unknown>;
-  return user.id as string;
-}
-
 export async function GET() {
-  const userId = await getUserId();
-  if (userId instanceof NextResponse) return userId;
+  const userIdOr401 = await getAuthUserId();
+  if (userIdOr401 instanceof NextResponse) return userIdOr401;
+  const userId = userIdOr401;
 
   try {
     const today = format(new Date(), "yyyy-MM-dd");
@@ -30,7 +22,8 @@ export async function GET() {
     const todayReflection = reflections.find((r) => r.date === today);
 
     return NextResponse.json({ reflections, todayReflection });
-  } catch {
+  } catch (e) {
+    logError("reflections", "Failed to fetch reflections", e);
     return NextResponse.json(
       { error: "Failed to fetch reflections" },
       { status: 500 }
@@ -39,8 +32,9 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-  const userId = await getUserId();
-  if (userId instanceof NextResponse) return userId;
+  const userIdOr401 = await getAuthUserId();
+  if (userIdOr401 instanceof NextResponse) return userIdOr401;
+  const userId = userIdOr401;
 
   try {
     const body = await request.json();
@@ -84,6 +78,7 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+    logError("reflections", "Failed to save reflection", error);
     return NextResponse.json(
       { error: "Failed to save reflection" },
       { status: 500 }

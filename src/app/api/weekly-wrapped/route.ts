@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getAuthUserId } from '@/lib/auth-utils';
 import { db } from '@/lib/db';
+import { calculateStreak, gradeFromScore } from '@/lib/analytics';
+import { logError } from '@/lib/logger';
 import {
   format,
   startOfWeek,
@@ -12,28 +13,10 @@ import {
   eachDayOfInterval,
 } from 'date-fns';
 
-async function getUserId(): Promise<string | NextResponse> {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-  const user = session.user as Record<string, unknown>;
-  return user.id as string;
-}
-
-const WEEKDAY_LABELS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-
-function gradeFromScore(score: number): string {
-  if (score >= 90) return 'A';
-  if (score >= 80) return 'B';
-  if (score >= 70) return 'C';
-  if (score >= 60) return 'D';
-  return 'F';
-}
-
 export async function GET() {
-  const userId = await getUserId();
-  if (userId instanceof NextResponse) return userId;
+  const userIdOr401 = await getAuthUserId();
+  if (userIdOr401 instanceof NextResponse) return userIdOr401;
+  const userId = userIdOr401;
 
   try {
     const now = new Date();
@@ -49,7 +32,7 @@ export async function GET() {
       lastWeekMissions,
       thisWeekReflections,
       lastWeekReflections,
-      allSessionDates,
+      streak,
     ] = await Promise.all([
       db.focusSession.findMany({
         where: {
@@ -97,11 +80,7 @@ export async function GET() {
         },
         select: { date: true },
       }),
-      db.focusSession.findMany({
-        where: { userId, type: { not: 'break' } },
-        select: { startedAt: true },
-        orderBy: { startedAt: 'desc' },
-      }),
+      calculateStreak(userId),
     ]);
 
     // --- This week aggregates ---
@@ -109,7 +88,7 @@ export async function GET() {
       (acc, s) => acc + s.duration,
       0
     );
-    const thisWeekHours = Math.round((thisWeekMinutes / 60 / 60) * 10) / 10; // hours with 1 decimal
+    const thisWeekHours = Math.round((thisWeekMinutes / 60 / 60) * 10) / 10;
     const lastWeekMinutes = lastWeekSessions.reduce(
       (acc, s) => acc + s.duration,
       0
@@ -123,7 +102,7 @@ export async function GET() {
     );
     const deepestSession = deepest
       ? {
-          duration: Math.round(deepest.duration / 60), // minutes
+          duration: Math.round(deepest.duration / 60),
           mission: deepest.mission?.title || 'Free Focus',
           date: format(new Date(deepest.startedAt), 'yyyy-MM-dd'),
         }
@@ -137,7 +116,7 @@ export async function GET() {
       );
       return {
         date: d,
-        dayLabel: WEEKDAY_LABELS[d.getDay()],
+        dayLabel: format(d, 'EEEE'),
         minutes: Math.round(sessions.reduce((acc, s) => acc + s.duration, 0) / 60),
         sessions: sessions.length,
       };
@@ -197,7 +176,7 @@ export async function GET() {
         ? Math.round((completedMissionsThisWeek / totalMissionsThisWeek) * 100)
         : 0;
 
-    // Reflection rate this week (fraction of days with reflections)
+    // Reflection rate this week
     const weekDayCount = dayRange.length;
     const reflectionRate =
       weekDayCount > 0
@@ -229,23 +208,9 @@ export async function GET() {
       }
     }
 
-    // Overall current streak (from all sessions)
-    const daysWithSessions = new Set(
-      allSessionDates.map((s) => format(startOfDay(new Date(s.startedAt)), 'yyyy-MM-dd'))
-    );
-    let overallStreak = 0;
-    let checkDate = startOfDay(now);
-    if (!daysWithSessions.has(format(checkDate, 'yyyy-MM-dd'))) {
-      checkDate = subDays(checkDate, 1);
-    }
-    while (daysWithSessions.has(format(checkDate, 'yyyy-MM-dd'))) {
-      overallStreak++;
-      checkDate = subDays(checkDate, 1);
-    }
-
     // Attention grade: composite score from focus hours, consistency, mission rate, reflection rate
-    const hoursScore = Math.min((thisWeekHours / 20) * 40, 40); // 20h/week = full 40 pts
-    const streakScore = Math.min((longestStreak / 7) * 25, 25); // 7-day streak = full 25 pts
+    const hoursScore = Math.min((thisWeekHours / 20) * 40, 40);
+    const streakScore = Math.min((longestStreak / 7) * 25, 25);
     const missionScore = Math.min((missionCompletionRate / 100) * 20, 20);
     const reflectionScore = Math.min((reflectionRate / 100) * 15, 15);
     const attentionScore = Math.round(
@@ -286,7 +251,7 @@ export async function GET() {
       bestDay,
       mostProductiveHour,
       longestStreak,
-      overallStreak,
+      overallStreak: streak,
       missionCompletionRate,
       missionsCompleted: completedMissionsThisWeek,
       missionsCreated: totalMissionsThisWeek,
@@ -310,7 +275,7 @@ export async function GET() {
       },
     });
   } catch (e) {
-    console.error('[weekly-wrapped] error', e);
+    logError("weekly-wrapped", "Failed to build weekly wrapped report", e);
     return NextResponse.json(
       { error: 'Failed to build weekly wrapped report' },
       { status: 500 }

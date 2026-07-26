@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getAuthUserId } from '@/lib/auth-utils';
 import { db } from '@/lib/db';
+import { calculateStreak, findBestHour, findBestWeekday, weekdayLabel, hourLabel } from '@/lib/analytics';
+import { logError } from '@/lib/logger';
 import {
   format,
   startOfDay,
@@ -11,45 +12,10 @@ import {
   differenceInCalendarDays,
 } from 'date-fns';
 
-async function getUserId(): Promise<string | NextResponse> {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-  const user = session.user as Record<string, unknown>;
-  return user.id as string;
-}
-
-const HOUR_LABELS: Record<number, string> = {
-  0: 'late night',
-  1: 'late night',
-  2: 'late night',
-  3: 'late night',
-  4: 'early morning',
-  5: 'early morning',
-  6: 'early morning',
-  7: 'morning',
-  8: 'morning',
-  9: 'morning',
-  10: 'morning',
-  11: 'late morning',
-  12: 'midday',
-  13: 'afternoon',
-  14: 'afternoon',
-  15: 'afternoon',
-  16: 'afternoon',
-  17: 'late afternoon',
-  18: 'evening',
-  19: 'evening',
-  20: 'evening',
-  21: 'night',
-  22: 'night',
-  23: 'late night',
-};
-
 export async function GET() {
-  const userId = await getUserId();
-  if (userId instanceof NextResponse) return userId;
+  const userIdOr401 = await getAuthUserId();
+  if (userIdOr401 instanceof NextResponse) return userIdOr401;
+  const userId = userIdOr401;
 
   try {
     const now = new Date();
@@ -60,26 +26,27 @@ export async function GET() {
     const weekStart = startOfWeek(now, { weekStartsOn: 1 });
     const last30Start = subDays(now, 30);
 
-    const user = await db.user.findUnique({
-      where: { id: userId },
-      select: { name: true, displayName: true },
-    });
-    const userName = user?.displayName || user?.name || 'there';
-
     const [
+      user,
       todaySessions,
       yesterdaySessions,
       weekSessions,
       last30Sessions,
       last30Reflections,
       weekMissionsCompleted,
+      streak,
     ] = await Promise.all([
+      db.user.findUnique({
+        where: { id: userId },
+        select: { name: true, displayName: true },
+      }),
       db.focusSession.findMany({
         where: {
           userId,
           startedAt: { gte: todayStart, lte: todayEnd },
           type: { not: 'break' },
         },
+        select: { id: true, duration: true, startedAt: true },
       }),
       db.focusSession.findMany({
         where: {
@@ -87,6 +54,7 @@ export async function GET() {
           startedAt: { gte: yesterdayStart, lte: yesterdayEnd },
           type: { not: 'break' },
         },
+        select: { id: true, duration: true, startedAt: true },
       }),
       db.focusSession.findMany({
         where: {
@@ -94,6 +62,7 @@ export async function GET() {
           startedAt: { gte: weekStart },
           type: { not: 'break' },
         },
+        select: { id: true, duration: true, startedAt: true },
       }),
       db.focusSession.findMany({
         where: {
@@ -114,7 +83,10 @@ export async function GET() {
           completedAt: { gte: weekStart },
         },
       }),
+      calculateStreak(userId),
     ]);
+
+    const userName = user?.displayName || user?.name || 'there';
 
     const todayMinutes = Math.round(
       todaySessions.reduce((acc, s) => acc + s.duration, 0) / 60
@@ -126,54 +98,12 @@ export async function GET() {
       weekSessions.reduce((acc, s) => acc + s.duration, 0) / 60
     );
 
-    // Best focus hour: aggregate by hour of day across last 30 days
-    const hourAgg = new Array(24).fill(0);
-    for (const s of last30Sessions) {
-      hourAgg[new Date(s.startedAt).getHours()] += s.duration;
-    }
-    let bestHour = -1;
-    let bestHourMinutes = 0;
-    for (let h = 0; h < 24; h++) {
-      if (hourAgg[h] > bestHourMinutes) {
-        bestHourMinutes = hourAgg[h];
-        bestHour = h;
-      }
-    }
-
-    // Best weekday: aggregate by day of week (0=Sun..6=Sat)
-    const weekdayAgg = new Array(7).fill(0);
-    for (const s of last30Sessions) {
-      weekdayAgg[new Date(s.startedAt).getDay()] += s.duration;
-    }
-    let bestWeekdayIdx = -1;
-    let bestWeekdayMinutes = 0;
-    for (let d = 0; d < 7; d++) {
-      if (weekdayAgg[d] > bestWeekdayMinutes) {
-        bestWeekdayMinutes = weekdayAgg[d];
-        bestWeekdayIdx = d;
-      }
-    }
-    const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-    const bestWeekday = bestWeekdayIdx >= 0 ? WEEKDAYS[bestWeekdayIdx] : '—';
-
-    // Streak calculation: walk back from today counting consecutive days with sessions
-    const allSessionDates = await db.focusSession.findMany({
-      where: { userId, type: { not: 'break' } },
-      select: { startedAt: true },
-    });
-    const daysWithSessions = new Set(
-      allSessionDates.map((s) => format(startOfDay(new Date(s.startedAt)), 'yyyy-MM-dd'))
-    );
-    let streak = 0;
-    let checkDate = startOfDay(now);
-    // If today has no sessions yet but yesterday does, streak still counts from yesterday
-    if (!daysWithSessions.has(format(checkDate, 'yyyy-MM-dd'))) {
-      checkDate = subDays(checkDate, 1);
-    }
-    while (daysWithSessions.has(format(checkDate, 'yyyy-MM-dd'))) {
-      streak++;
-      checkDate = subDays(checkDate, 1);
-    }
+    const bestHourResult = findBestHour(last30Sessions);
+    const bestWeekdayResult = findBestWeekday(last30Sessions);
+    const bestWeekday = bestWeekdayResult !== null ? weekdayLabel(bestWeekdayResult) : '—';
+    const bestWeekdayMinutes = bestWeekdayResult !== null
+      ? last30Sessions.filter(s => new Date(s.startedAt).getDay() === bestWeekdayResult).reduce((acc, s) => acc + s.duration, 0)
+      : 0;
 
     // Reflection rate over last 30 days
     const last30DayCount = differenceInCalendarDays(now, last30Start) + 1;
@@ -229,15 +159,15 @@ export async function GET() {
       );
     }
 
-    if (bestHour >= 0) {
-      const hourLabel = HOUR_LABELS[bestHour] || 'daytime';
-      const formattedHour = format(new Date().setHours(bestHour, 0, 0, 0), 'h a');
+    if (bestHourResult !== null) {
+      const hLabel = hourLabel(bestHourResult);
+      const formattedHour = format(new Date().setHours(bestHourResult, 0, 0, 0), 'h a');
       recommendations.push(
-        `Your data says you focus best in the ${hourLabel} (around ${formattedHour}). Try scheduling your hardest mission in that window.`
+        `Your data says you focus best in the ${hLabel} (around ${formattedHour}). Try scheduling your hardest mission in that window.`
       );
     }
 
-    if (bestWeekdayIdx >= 0) {
+    if (bestWeekdayResult !== null) {
       recommendations.push(
         `${bestWeekday} is your strongest weekday (${Math.round(bestWeekdayMinutes / 60)} focus minutes logged in the last 30 days). Plan deep work for ${bestWeekday}s.`
       );
@@ -287,7 +217,7 @@ export async function GET() {
       todayMinutes,
       yesterdayMinutes,
       weekMinutes,
-      bestHour,
+      bestHour: bestHourResult,
       bestWeekday,
       streak,
       weekMissionsCompleted,
@@ -297,7 +227,7 @@ export async function GET() {
       summary,
     });
   } catch (e) {
-    console.error('[coach] error', e);
+    logError("coach", "Failed to fetch coach briefing", e);
     return NextResponse.json(
       { error: 'Failed to fetch coach briefing' },
       { status: 500 }
