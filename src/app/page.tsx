@@ -23,6 +23,7 @@ import { AssistantView } from '@/components/assistant/assistant-view';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useMounted } from '@/hooks/use-mounted';
+import { useDesktopIntegration } from '@/hooks/use-desktop-integration';
 
 export default function HomePage() {
   const mounted = useMounted();
@@ -42,6 +43,9 @@ export default function HomePage() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const onboardingCheckedRef = useRef(false);
 
+  // Desktop companion integration
+  const desktop = useDesktopIntegration();
+
   useEffect(() => {
     if (status === 'authenticated' && !onboardingCheckedRef.current) {
       onboardingCheckedRef.current = true;
@@ -56,6 +60,15 @@ export default function HomePage() {
       }
     }
   }, [status, session]);
+
+  // Send auth token to Electron desktop companion
+  useEffect(() => {
+    if (desktop.isElectron && status === 'authenticated' && session) {
+      // Get the NextAuth session token and send it to Electron
+      const token = (session as any)?.accessToken || '';
+      desktop.sendAuthToken(token || 'session-based').catch(() => {});
+    }
+  }, [desktop.isElectron, status, session, desktop.sendAuthToken]);
 
   useEffect(() => {
     if (status === 'authenticated' && session?.user && !showOnboarding) {
