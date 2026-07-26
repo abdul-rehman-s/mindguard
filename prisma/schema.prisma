@@ -15,6 +15,8 @@ model User {
   displayName   String?
   onboarded     Boolean           @default(false)
   primaryUse    String?
+  xp            Int               @default(0)
+  level         Int               @default(1)
   createdAt     DateTime          @default(now())
   updatedAt     DateTime          @updatedAt
 
@@ -46,6 +48,8 @@ model FocusSession {
   duration  Int
   startedAt DateTime
   endedAt   DateTime
+  quality   Int?
+  type      String?   @default("focus")
   createdAt DateTime  @default(now())
 
   user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -59,6 +63,10 @@ model DailyReflection {
   distraction    String
   wentWell       String
   tomorrowMission String
+  mood           Int?
+  energy         Int?
+  sleepHours     Float?
+  tags           String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 

@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { AppView, DashboardStats, WeeklyData, FocusModeState, OnboardingData } from "@/types";
+import type { AppView, DashboardStats, WeeklyData, FocusModeState, OnboardingData, CoachData, WeeklyWrapped } from "@/types";
 import type { Mission, FocusSession, DailyReflection, Achievement } from "@prisma/client";
 
 type SafeUser = {
@@ -50,6 +50,12 @@ interface AppState {
 
   focusDuration: number;
   setFocusDuration: (d: number) => void;
+
+  coach: CoachData | null;
+  setCoach: (c: CoachData | null) => void;
+
+  wrapped: WeeklyWrapped | null;
+  setWrapped: (w: WeeklyWrapped | null) => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -93,6 +99,12 @@ export const useAppStore = create<AppState>((set) => ({
 
   focusDuration: 1500,
   setFocusDuration: (focusDuration) => set({ focusDuration }),
+
+  coach: null,
+  setCoach: (coach) => set({ coach }),
+
+  wrapped: null,
+  setWrapped: (wrapped) => set({ wrapped }),
 
 }));
 

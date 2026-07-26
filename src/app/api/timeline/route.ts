@@ -3,15 +3,41 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { db } from '@/lib/db';
 
+type TimelineEvent = {
+  id: string;
+  type:
+    | 'session'
+    | 'break'
+    | 'reflection'
+    | 'mission_created'
+    | 'mission_completed'
+    | 'achievement_unlocked';
+  title: string;
+  subtitle?: string;
+  time: string;
+  minutes?: number;
+  group: string;
+};
+
+const GROUP_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
+
 export async function GET() {
   const session = await getServerSession(authOptions);
-  if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!session?.user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
 
   const userId = (session.user as Record<string, unknown>).id as string;
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  const [sessions, reflections, completedMissions] = await Promise.all([
+  const [
+    sessions,
+    reflections,
+    missionsCreatedToday,
+    missionsCompletedToday,
+    achievementsUnlockedToday,
+  ] = await Promise.all([
     db.focusSession.findMany({
       where: { userId, endedAt: { gte: today } },
       include: { mission: { select: { title: true } } },
@@ -19,41 +45,120 @@ export async function GET() {
     }),
     db.dailyReflection.findMany({
       where: { userId, date: today.toISOString().split('T')[0] },
+      orderBy: { createdAt: 'desc' },
+    }),
+    db.mission.findMany({
+      where: { userId, createdAt: { gte: today } },
+      orderBy: { createdAt: 'desc' },
     }),
     db.mission.findMany({
       where: { userId, status: 'completed', completedAt: { gte: today } },
       orderBy: { completedAt: 'desc' },
     }),
+    db.achievement.findMany({
+      where: { userId, unlockedAt: { gte: today } },
+      orderBy: { unlockedAt: 'desc' },
+    }),
   ]);
 
-  const events: { id: string; type: 'session' | 'reflection' | 'mission_completed'; title: string; time: string; minutes?: number }[] = [];
+  const events: TimelineEvent[] = [];
 
   for (const s of sessions) {
+    const isBreak = s.type === 'break';
     events.push({
       id: s.id,
-      type: 'session',
-      title: s.mission?.title || 'Free Focus',
+      type: isBreak ? 'break' : 'session',
+      title: s.mission?.title || (isBreak ? 'Break' : 'Free Focus'),
+      subtitle: isBreak
+        ? 'Recharge'
+        : `${Math.round(s.duration / 60)} min`,
       time: s.endedAt.toISOString(),
       minutes: s.duration,
+      group: '',
     });
   }
+
   for (const r of reflections) {
     events.push({
       id: r.id,
       type: 'reflection',
       title: 'Daily Reflection',
+      subtitle: r.tomorrowMission
+        ? `Next: ${r.tomorrowMission.slice(0, 60)}${r.tomorrowMission.length > 60 ? '…' : ''}`
+        : undefined,
       time: r.createdAt.toISOString(),
-    });
-  }
-  for (const m of completedMissions) {
-    events.push({
-      id: m.id,
-      type: 'mission_completed',
-      title: m.title,
-      time: (m.completedAt || m.updatedAt).toISOString(),
+      group: '',
     });
   }
 
-  events.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
+  for (const m of missionsCreatedToday) {
+    events.push({
+      id: m.id,
+      type: 'mission_created',
+      title: m.title,
+      subtitle: `New mission • ${m.priority} priority`,
+      time: m.createdAt.toISOString(),
+      group: '',
+    });
+  }
+
+  for (const m of missionsCompletedToday) {
+    events.push({
+      id: `${m.id}-done`,
+      type: 'mission_completed',
+      title: m.title,
+      subtitle: 'Completed',
+      time: (m.completedAt || m.updatedAt).toISOString(),
+      group: '',
+    });
+  }
+
+  for (const a of achievementsUnlockedToday) {
+    events.push({
+      id: a.id,
+      type: 'achievement_unlocked',
+      title: prettyAchievementType(a.type),
+      subtitle: 'Achievement unlocked',
+      time: a.unlockedAt.toISOString(),
+      group: '',
+    });
+  }
+
+  // Sort chronologically: oldest first (for timeline display)
+  events.sort(
+    (a, b) => new Date(a.time).getTime() - new Date(b.time).getTime()
+  );
+
+  // Group events within 15 minutes of each other
+  let currentGroup = '';
+  let lastTime = 0;
+  let groupCounter = 0;
+  for (const ev of events) {
+    const t = new Date(ev.time).getTime();
+    if (
+      currentGroup === '' ||
+      Math.abs(t - lastTime) > GROUP_WINDOW_MS
+    ) {
+      groupCounter++;
+      currentGroup = `g-${groupCounter}`;
+    }
+    ev.group = currentGroup;
+    lastTime = t;
+  }
+
   return NextResponse.json({ events });
+}
+
+function prettyAchievementType(type: string): string {
+  const map: Record<string, string> = {
+    first_focus: 'First Focus',
+    streak_7: '7-Day Streak',
+    streak_30: '30-Day Streak',
+    hours_100: '100-Hour Club',
+    night_owl: 'Night Owl',
+    early_bird: 'Early Bird',
+    deep_worker: 'Deep Worker',
+    mission_master: 'Mission Master',
+  };
+  return map[type] || type.replace(/_/g, ' ');
 }

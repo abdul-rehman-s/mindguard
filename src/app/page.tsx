@@ -13,6 +13,8 @@ import { ReflectionView } from '@/components/reflection/reflection-view';
 import { SessionHistoryView } from '@/components/sessions/session-history-view';
 import { StatsView } from '@/components/stats/stats-view';
 import { SettingsView } from '@/components/settings/settings-view';
+import { ReplayView } from '@/components/replay/replay-view';
+import { WrappedView } from '@/components/wrapped/wrapped-view';
 import { OnboardingFlow } from '@/components/onboarding/onboarding-flow';
 import { FocusMode } from '@/components/timer/focus-mode';
 import { Loader2 } from 'lucide-react';
@@ -120,6 +122,8 @@ export default function HomePage() {
           {currentView === 'reflection' && <ReflectionView />}
           {currentView === 'sessions' && <SessionHistoryView />}
           {currentView === 'stats' && <StatsView />}
+          {currentView === 'replay' && <ReplayView />}
+          {currentView === 'wrapped' && <WrappedView />}
           {currentView === 'settings' && <SettingsView />}
         </motion.div>
       </AnimatePresence>

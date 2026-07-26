@@ -16,7 +16,9 @@ export type AppView =
   | "reflection"
   | "sessions"
   | "stats"
-  | "settings";
+  | "settings"
+  | "replay"
+  | "wrapped";
 
 export type MissionStatus = "active" | "completed" | "deleted";
 export type MissionPriority = "low" | "medium" | "high";
@@ -103,8 +105,112 @@ export interface HeatmapDay {
 
 export interface TimelineEvent {
   id: string;
-  type: "session" | "reflection" | "mission_completed";
+  type:
+    | "session"
+    | "reflection"
+    | "mission_completed"
+    | "break"
+    | "mission_created"
+    | "achievement_unlocked";
   title: string;
+  subtitle?: string;
   time: string;
   minutes?: number;
+  group?: string;
+}
+
+// ─── MindGuard v3.1 new types ───
+
+export interface CoachData {
+  greeting: string;
+  userName: string;
+  todayMinutes: number;
+  yesterdayMinutes: number;
+  weekMinutes: number;
+  bestHour: number | null;
+  bestWeekday: string | null;
+  streak: number;
+  weekMissionsCompleted: number;
+  weekReflections: number;
+  recommendations: string[];
+  summary: string;
+}
+
+export interface AchievementProgress {
+  type: string;
+  title: string;
+  description: string;
+  icon: string;
+  unlocked: boolean;
+  progress: number;
+  progressMax: number;
+  progressPct: number;
+  xpReward: number;
+  unlockedAt: string | null;
+  estimatedRemaining: string | null;
+}
+
+export interface Insight {
+  type: "pattern" | "trend" | "achievement" | "suggestion";
+  title: string;
+  description: string;
+  metric: string;
+  value: string | number;
+  icon: string;
+}
+
+export interface ReplayEvent {
+  id: string;
+  type: string;
+  title: string;
+  subtitle?: string;
+  time: string;
+  duration?: number;
+  icon: string;
+}
+
+export interface ReplayData {
+  date: string;
+  events: ReplayEvent[];
+  summary: {
+    totalMinutes: number;
+    sessionCount: number;
+    missionsCompleted: number;
+    reflectionWritten: boolean;
+    longestSession: number;
+    bestHour: number | null;
+  };
+}
+
+export interface WeeklyWrapped {
+  totalFocusHours: number;
+  totalFocusMinutes?: number;
+  sessionCount: number;
+  deepestSession?: { duration: number; mission: string | null; date: string } | null;
+  bestDay: { day: string; minutes: number; sessions: number } | null;
+  mostProductiveHour: { hour: string; sessions: number; avgMinutes: number } | null;
+  longestStreak: number;
+  overallStreak?: number;
+  missionCompletionRate: number;
+  missionsCompleted?: number;
+  missionsCreated?: number;
+  reflectionRate: number;
+  reflectionsWritten?: number;
+  reflectionDaysPossible?: number;
+  attentionScore?: number;
+  attentionGrade: string;
+  weekOverWeek: {
+    focusChange: number;
+    sessionChange: number;
+    streakChange: number;
+    missionRateChange?: number;
+  };
+  lastWeek?: {
+    totalFocusHours: number;
+    sessionCount: number;
+    longestStreak: number;
+    missionCompletionRate: number;
+    reflectionCount: number;
+  };
+  weekRange?: { start: string; end: string };
 }

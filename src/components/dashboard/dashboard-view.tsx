@@ -30,9 +30,10 @@ import { StaggerContainer, StaggerItem } from '@/components/premium/stagger';
 import { playClick } from '@/lib/sounds';
 
 import { Heatmap } from './heatmap';
-import { Achievements } from './achievements';
+import { AchievementsV2 } from './achievements-v2';
 import { Timeline } from './timeline';
-import { AttentionScore } from './attention-score';
+import { AiCoach } from './ai-coach';
+import { AiInsights } from './ai-insights';
 
 const container = {
   hidden: { opacity: 0 },
@@ -359,13 +360,27 @@ export function DashboardView() {
         </motion.div>
       </StaggerItem>
 
-      {/* New widgets row */}
-      <StaggerItem className="mt-4 grid gap-4 lg:grid-cols-3">
-        <Timeline />
-        <AttentionScore />
-        <div className="space-y-4">
+      {/* Bottom widgets row — 3-col x 2-row grid */}
+      <StaggerItem className="mt-4">
+        <div className="grid gap-4 lg:grid-cols-3 lg:grid-rows-2">
+          {/* Left column: AI Coach (full height — spans both rows) */}
+          <div className="lg:row-span-2 flex">
+            <div className="flex w-full">
+              <AiCoach />
+            </div>
+          </div>
+
+          {/* Middle column: Timeline (top) */}
+          <Timeline />
+
+          {/* Right column: Heatmap (top) */}
           <Heatmap />
-          <Achievements />
+
+          {/* Middle column: AI Insights (bottom) */}
+          <AiInsights />
+
+          {/* Right column: Achievements V2 (bottom) */}
+          <AchievementsV2 />
         </div>
       </StaggerItem>
     </StaggerContainer>

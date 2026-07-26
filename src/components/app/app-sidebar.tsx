@@ -11,6 +11,8 @@ import {
   Shield,
   X,
   Clock,
+  RotateCcw,
+  Gift,
 } from 'lucide-react';
 import { useAppStore } from '@/stores/app-store';
 import { useSession, signOut } from 'next-auth/react';
@@ -28,6 +30,8 @@ const navItems: { view: AppView; icon: typeof LayoutDashboard; label: string; sh
   { view: 'reflection', icon: BookOpen, label: 'Reflection', shortcut: 'R' },
   { view: 'sessions', icon: Clock, label: 'Sessions', shortcut: 'H' },
   { view: 'stats', icon: BarChart3, label: 'Statistics', shortcut: 'S' },
+  { view: 'replay', icon: RotateCcw, label: 'Daily Replay', shortcut: 'P' },
+  { view: 'wrapped', icon: Gift, label: 'Weekly Wrapped', shortcut: 'W' },
   { view: 'settings', icon: Settings, label: 'Settings', shortcut: ',' },
 ];
 

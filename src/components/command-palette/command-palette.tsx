@@ -13,6 +13,8 @@ import {
   Clock,
   Play,
   Plus,
+  RotateCcw,
+  Gift,
 } from 'lucide-react';
 import { useAppStore } from '@/stores/app-store';
 import { cn } from '@/lib/utils';
@@ -46,6 +48,8 @@ const navCommands: NavCommand[] = [
   { type: 'nav', view: 'reflection', icon: BookOpen, label: 'Daily Reflection', shortcut: 'G R', keywords: ['journal', 'review', 'diary', 'log'] },
   { type: 'nav', view: 'sessions', icon: Clock, label: 'Session History', shortcut: 'G H', keywords: ['sessions', 'history', 'log', 'past', 'completed'] },
   { type: 'nav', view: 'stats', icon: BarChart3, label: 'Statistics', shortcut: 'G S', keywords: ['analytics', 'charts', 'data'] },
+  { type: 'nav', view: 'replay', icon: RotateCcw, label: 'Daily Replay', shortcut: 'G P', keywords: ['replay', 'day', 'history', 'timeline'] },
+  { type: 'nav', view: 'wrapped', icon: Gift, label: 'Weekly Wrapped', shortcut: 'G W', keywords: ['wrapped', 'weekly', 'summary', 'report'] },
   { type: 'nav', view: 'settings', icon: Settings, label: 'Settings', shortcut: 'G ,', keywords: ['profile', 'preferences', 'account', 'theme'] },
 ];
 

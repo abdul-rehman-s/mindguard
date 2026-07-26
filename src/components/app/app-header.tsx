@@ -25,6 +25,8 @@ const viewTitles: Record<AppView, string> = {
   sessions: 'Session History',
   stats: 'Statistics',
   settings: 'Settings',
+  replay: 'Daily Replay',
+  wrapped: 'Weekly Wrapped',
 };
 
 export function AppHeader() {

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { format, subDays, startOfDay, endOfDay, isSameDay } from "date-fns";
+import { format, subDays, startOfDay, endOfDay, isSameDay, startOfWeek } from "date-fns";
 
 async function getUserId(): Promise<string | NextResponse> {
   const session = await getServerSession(authOptions);
@@ -102,6 +102,31 @@ export async function GET() {
       include: { focusSessions: true },
     });
 
+    // --- New: achievement progress count, today's reflection, weekly missions completed ---
+    const weekStartMon = startOfWeek(now, { weekStartsOn: 1 });
+    const [
+      unlockedAchievementCount,
+      todayReflectionRecord,
+      weeklyMissionsCompleted,
+      totalMissionCount,
+    ] = await Promise.all([
+      db.achievement.count({ where: { userId } }),
+      db.dailyReflection.findUnique({
+        where: {
+          userId_date: { userId, date: format(now, "yyyy-MM-dd") },
+        },
+        select: { id: true },
+      }),
+      db.mission.count({
+        where: {
+          userId,
+          status: "completed",
+          completedAt: { gte: weekStartMon },
+        },
+      }),
+      db.mission.count({ where: { userId, status: "completed" } }),
+    ]);
+
     return NextResponse.json({
       todayFocusMinutes: todayMinutes,
       weeklyFocusMinutes: weeklyMinutes,
@@ -115,6 +140,10 @@ export async function GET() {
       weeklyData: weekDays,
       recentSessions,
       activeMission,
+      achievementProgress: unlockedAchievementCount,
+      todayReflection: !!todayReflectionRecord,
+      weeklyMissionsCompleted,
+      totalMissionsCompleted: totalMissionCount,
     });
   } catch {
     return NextResponse.json(
