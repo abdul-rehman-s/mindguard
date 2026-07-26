@@ -9,6 +9,7 @@ Your AI-powered attention guardian that protects focus, tracks activity, and boo
 - **MindGuard-Setup-1.0.0.exe** — NSIS installer with desktop shortcut, Start Menu integration, and per-user installation
 - **MindGuard-Portable-1.0.0.exe** — Portable executable that runs from any location without installation
 - **MindGuard-v1.0.0-win.zip** — Unpacked build archive for advanced deployment
+- **latest.yml** — Auto-update metadata for electron-updater
 - **sha256-checksums.txt** — SHA256 checksums for all release artifacts
 
 ### Features
