@@ -33,7 +33,7 @@
   "build": {
     "appId": "com.abdulrehman.mindguard",
     "productName": "MindGuard",
-    "copyright": "Copyright © 2024 Abdul Rehman",
+    "copyright": "Copyright © 2025 Abdul Rehman",
     "compression": "maximum",
     "directories": {
       "output": "dist-electron"
@@ -44,14 +44,16 @@
       "package.json"
     ],
     "win": {
+      "executableName": "MindGuard",
       "target": [
         "nsis",
         "portable",
-        "dir"
+        "zip"
       ],
       "icon": "assets/icon.ico",
       "publisherName": "Abdul Rehman",
-      "verifyUpdateCodeSignature": false
+      "verifyUpdateCodeSignature": false,
+      "artifactName": "MindGuard-v${version}-win.${ext}"
     },
     "mac": {
       "target": ["dmg"],
