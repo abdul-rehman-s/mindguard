@@ -57,4 +57,5 @@ db/custom.db
 tool-results/
 
 # Skills directory
-/skills/
+/skills/download/
+agent-ctx/
