@@ -27,14 +27,16 @@ const PRESETS = [
 ];
 
 // ---- Ambient Particles (reduced count: 20 → 12) ----
+// Pre-computed values to avoid Math.random() during render (React purity rule)
 const ambientParticles = Array.from({ length: 12 }, (_, i) => ({
   id: i,
-  x: Math.random() * 100,
-  y: Math.random() * 100,
-  size: Math.random() * 3 + 1,
-  duration: Math.random() * 15 + 10,
-  delay: Math.random() * 5,
-  opacity: Math.random() * 0.3 + 0.05,
+  x: ((i * 37 + 13) % 100), // Deterministic pseudo-random distribution
+  y: ((i * 53 + 7) % 100),
+  size: (i % 3) + 1,
+  duration: (i % 5) * 3 + 10,
+  delay: (i % 5),
+  opacity: (i % 3) * 0.1 + 0.05,
+  xDrift: ((i * 7 + 3) % 20) - 10, // Pre-computed drift value
 }));
 
 function AmbientParticles() {
@@ -52,7 +54,7 @@ function AmbientParticles() {
           }}
           animate={{
             y: [0, -30, 0],
-            x: [0, Math.random() * 20 - 10, 0],
+            x: [0, p.xDrift, 0],
             opacity: [p.opacity, p.opacity * 2, p.opacity],
           }}
           transition={{
