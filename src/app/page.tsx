@@ -55,11 +55,18 @@ export default function HomePage() {
       onboardingCheckedRef.current = true;
       const sessionUser = session?.user as Record<string, unknown> | undefined;
       if (!sessionUser?.onboarded) {
-        fetch('/api/onboarding').then(r => r.json()).then(d => {
-          if (!d.onboarded) setShowOnboarding(true);
-        }).catch((err) => {
-          toast.error('Failed to check onboarding status');
-          console.error('Onboarding check failed:', err);
+        fetch('/api/onboarding').then(r => {
+          if (r.status === 401) {
+            // Session not yet established — retry silently
+            onboardingCheckedRef.current = false;
+            return null;
+          }
+          return r.json();
+        }).then(d => {
+          if (d && !d.onboarded) setShowOnboarding(true);
+        }).catch(() => {
+          // Network error — don't show toast, will retry on next render
+          onboardingCheckedRef.current = false;
         });
       }
     }

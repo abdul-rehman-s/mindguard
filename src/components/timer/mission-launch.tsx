@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Play, Check, ShieldOff, Droplets, BellOff, Crosshair } from 'lucide-react';
 import { toast } from 'sonner';
@@ -31,9 +31,18 @@ export function MissionLaunch({ missionTitle, duration, onStart, onCancel }: Mis
     ready: false,
   });
   const [countdown, setCountdown] = useState<number | null>(null);
+  const startTriggeredRef = useRef(false);
 
   const checkedCount = Object.values(checks).filter(Boolean).length;
   const allChecked = checkedCount === TOTAL_ITEMS;
+
+  // Call onStart outside of setState to avoid "Cannot update a component while rendering" error
+  useEffect(() => {
+    if (startTriggeredRef.current) {
+      startTriggeredRef.current = false;
+      onStart();
+    }
+  }, [onStart, countdown]);
 
   const toggleCheck = useCallback((id: string) => {
     if (countdown !== null) return;
@@ -50,13 +59,13 @@ export function MissionLaunch({ missionTitle, duration, onStart, onCancel }: Mis
       setCountdown((prev) => {
         if (prev === null || prev <= 1) {
           clearInterval(timer);
-          onStart();
+          startTriggeredRef.current = true; // Trigger onStart in useEffect instead
           return null;
         }
         return prev - 1;
       });
     }, 800);
-  }, [allChecked, onStart]);
+  }, [allChecked]);
 
   const handleCancel = useCallback(() => {
     onCancel();
