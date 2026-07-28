@@ -1,12 +1,13 @@
 {
   "name": "mindguard-desktop-ws",
-  "version": "1.0.0",
-  "description": "MindGuard Desktop WebSocket service for real-time updates",
+  "version": "2.0.0",
+  "description": "MindGuard Desktop WebSocket service for real-time updates (with auth validation)",
   "main": "index.ts",
   "scripts": {
     "dev": "bun --hot index.ts"
   },
   "dependencies": {
-    "ws": "^8.18.0"
+    "ws": "^8.18.0",
+    "jose": "^5.9.6"
   }
 }

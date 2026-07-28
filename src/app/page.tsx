@@ -24,6 +24,7 @@ import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useMounted } from '@/hooks/use-mounted';
 import { useDesktopIntegration } from '@/hooks/use-desktop-integration';
+import { useWebsocketSync } from '@/hooks/use-websocket-sync';
 
 export default function HomePage() {
   const mounted = useMounted();
@@ -45,6 +46,9 @@ export default function HomePage() {
 
   // Desktop companion integration
   const desktop = useDesktopIntegration();
+
+  // WebSocket sync for live desktop data updates
+  useWebsocketSync();
 
   useEffect(() => {
     if (status === 'authenticated' && !onboardingCheckedRef.current) {

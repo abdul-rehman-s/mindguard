@@ -9,8 +9,8 @@ const PRODUCTIVE_TYPES: ActivityType[] = ["focus", "deep_work", "learning", "cod
 const DISTRACTED_TYPES: ActivityType[] = ["distracted", "browsing", "entertainment", "gaming"];
 
 /** GET — Behavioral AI coaching based on desktop activity patterns */
-export async function GET() {
-  const userIdOr401 = await getAuthUserId();
+export async function GET(request: Request) {
+  const userIdOr401 = await getAuthUserId(request);
   if (userIdOr401 instanceof NextResponse) return userIdOr401;
   const userId = userIdOr401;
 

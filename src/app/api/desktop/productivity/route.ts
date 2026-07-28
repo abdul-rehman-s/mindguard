@@ -10,8 +10,8 @@ const DISTRACTED_TYPES: ActivityType[] = ["distracted", "browsing", "entertainme
 const IDLE_TYPES: ActivityType[] = ["idle", "break"];
 
 /** GET — Productivity metrics calculated from desktop activity data */
-export async function GET() {
-  const userIdOr401 = await getAuthUserId();
+export async function GET(request: Request) {
+  const userIdOr401 = await getAuthUserId(request);
   if (userIdOr401 instanceof NextResponse) return userIdOr401;
   const userId = userIdOr401;
 

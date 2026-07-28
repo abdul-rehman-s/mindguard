@@ -17,7 +17,7 @@ const notificationTriggerSchema = z.object({
 
 /** POST — Trigger desktop notification (from Electron tracker) */
 export async function POST(req: Request) {
-  const userIdOr401 = await getAuthUserId();
+  const userIdOr401 = await getAuthUserId(req);
   if (userIdOr401 instanceof NextResponse) return userIdOr401;
   const userId = userIdOr401;
 
@@ -90,8 +90,8 @@ export async function POST(req: Request) {
 }
 
 /** GET — Get current desktop notification state (for real-time polling) */
-export async function GET() {
-  const userIdOr401 = await getAuthUserId();
+export async function GET(request: Request) {
+  const userIdOr401 = await getAuthUserId(request);
   if (userIdOr401 instanceof NextResponse) return userIdOr401;
   const userId = userIdOr401;
 

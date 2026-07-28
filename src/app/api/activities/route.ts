@@ -19,7 +19,7 @@ const VALID_CATEGORIES: ActivityCategory[] = [
 
 /** POST — Create single activity or batch of activities */
 export async function POST(req: Request) {
-  const userIdOr401 = await getAuthUserId();
+  const userIdOr401 = await getAuthUserId(req);
   if (userIdOr401 instanceof NextResponse) return userIdOr401;
   const userId = userIdOr401;
 
@@ -95,7 +95,7 @@ export async function POST(req: Request) {
 
 /** GET — List activities with filters */
 export async function GET(req: Request) {
-  const userIdOr401 = await getAuthUserId();
+  const userIdOr401 = await getAuthUserId(req);
   if (userIdOr401 instanceof NextResponse) return userIdOr401;
   const userId = userIdOr401;
 
@@ -137,8 +137,8 @@ export async function GET(req: Request) {
 }
 
 /** DELETE — Delete all activities for user */
-export async function DELETE() {
-  const userIdOr401 = await getAuthUserId();
+export async function DELETE(request: Request) {
+  const userIdOr401 = await getAuthUserId(request);
   if (userIdOr401 instanceof NextResponse) return userIdOr401;
   const userId = userIdOr401;
 

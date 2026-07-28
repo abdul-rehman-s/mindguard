@@ -253,9 +253,11 @@ export function DashboardView() {
   const activeMission = useAppStore(s => s.activeMission);
   const recentSessions = useAppStore(s => s.recentSessions);
 
-  // Desktop tracker status
-  const [trackerConnected, setTrackerConnected] = useState(false);
-  const [currentApp, setCurrentApp] = useState<string | null>(null);
+  // Desktop tracker status — read from Zustand store (updated by WebSocket + HTTP polling)
+  const desktopStatus = useAppStore(s => s.desktopStatus);
+  const setDesktopStatus = useAppStore(s => s.setDesktopStatus);
+  const trackerConnected = desktopStatus?.connected ?? false;
+  const currentApp = desktopStatus?.currentApp ?? null;
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -280,9 +282,6 @@ export function DashboardView() {
       });
       setActiveMission(data.activeMission);
       setRecentSessions(data.recentSessions);
-      // Desktop tracker status
-      setTrackerConnected(data.desktopActivityCount > 0);
-      setCurrentApp(data.currentApp || null);
     } catch {
       setError('Failed to load dashboard data');
     } finally {
@@ -292,20 +291,32 @@ export function DashboardView() {
 
   useEffect(() => { fetchDashboard(); }, [fetchDashboard]);
 
-  // Poll desktop status every 30 seconds
+  // Poll desktop status as fallback (WebSocket is primary source)
   useEffect(() => {
-    const interval = setInterval(async () => {
+    const fetchDesktopStatus = async () => {
       try {
         const res = await fetch('/api/desktop/status');
         if (res.ok) {
           const data = await res.json();
-          setTrackerConnected(data.connected);
-          setCurrentApp(data.currentApp);
+          setDesktopStatus({
+            connected: data.connected,
+            trackingEnabled: data.trackingEnabled ?? true,
+            currentApp: data.currentApp || null,
+            currentWebsite: data.currentWebsite || null,
+            currentActivityType: data.currentActivityType || null,
+            idleMinutes: data.idleMinutes ?? 0,
+            lastActivityAt: data.lastActivityAt || null,
+            focusState: data.currentActivityType || 'idle',
+            syncStatus: { status: 'idle', pendingCount: 0, failedCount: 0, lastSyncAt: null, lastError: null },
+          });
         }
       } catch { /* silent fail — polling */ }
-    }, 30000);
+    };
+
+    fetchDesktopStatus();
+    const interval = setInterval(fetchDesktopStatus, 30000);
     return () => clearInterval(interval);
-  }, []);
+  }, [setDesktopStatus]);
 
   if (loading) {
     return <DashboardSkeleton />;
