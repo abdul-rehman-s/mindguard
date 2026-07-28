@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getAuthUserId } from '@/lib/auth-utils';
 import { db } from '@/lib/db';
 import { logError } from '@/lib/logger';
-import { format, startOfDay, endOfDay, subDays, startOfWeek, isSameDay } from 'date-fns';
+import { format, startOfDay, endOfDay, startOfWeek, isSameDay } from 'date-fns';
 
 export async function GET() {
   const userIdOr401 = await getAuthUserId();

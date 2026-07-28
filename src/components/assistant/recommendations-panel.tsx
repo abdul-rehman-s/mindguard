@@ -2,10 +2,10 @@
 
 import React, { useEffect, useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Lightbulb, Coffee, CalendarCheck, ShieldOff, ArrowRight, Heart, Target, Zap, Loader2, RefreshCw, AlertTriangle } from 'lucide-react';
+import { Lightbulb, Coffee, CalendarCheck, ShieldOff, ArrowRight, Heart, Target, Zap, RefreshCw, AlertTriangle } from 'lucide-react';
 import { useAppStore } from '@/stores/app-store';
 import { cn } from '@/lib/utils';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -42,7 +42,7 @@ export const RecommendationsPanel = React.memo(function RecommendationsPanel() {
       if (!res.ok) throw new Error('Failed to fetch recommendations');
       const data: AIRecommendation[] = await res.json();
       setAIRecommendations(data);
-    } catch (err) {
+    } catch {
       setError('Failed to generate recommendations. Please try again.');
     } finally {
       setIsLoading(false);

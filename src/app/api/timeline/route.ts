@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import { getAuthUserId } from '@/lib/auth-utils';
 import { db } from '@/lib/db';
 import { logError } from '@/lib/logger';
-import { format } from 'date-fns';
 
 type TimelineEvent = {
   id: string;

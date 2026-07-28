@@ -66,7 +66,7 @@ export const ChatPanel = React.memo(function ChatPanel() {
         sessionId: data.sessionId ?? undefined,
       };
       setConversationHistory([...conversationHistory, tempUserMsg, aiMsg]);
-    } catch (error) {
+    } catch {
       const errorMsg = {
         id: `error-${Date.now()}`,
         role: 'assistant' as const,

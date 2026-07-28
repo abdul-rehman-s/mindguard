@@ -5,15 +5,12 @@ import { motion } from 'framer-motion';
 import {
   Laptop,
   Brain,
-  Pause,
   Coffee,
   Zap,
   Target,
   Clock,
   Flame,
-  Award,
   TrendingUp,
-  Loader2,
   AlertCircle,
   Monitor,
   BarChart3,
@@ -30,7 +27,7 @@ import { Badge } from '@/components/ui/badge';
 import { useAppStore } from '@/stores/app-store';
 import { StaggerContainer, StaggerItem } from '@/components/premium/stagger';
 import { AnimatedNumber } from '@/components/premium/animated-number';
-import { cn, formatDuration } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 import { fadeInUp } from '@/lib/animations';
 import type { LifeDashboardData } from '@/types';
 

@@ -44,7 +44,7 @@ const navItems: { view: AppView; icon: typeof LayoutDashboard; label: string; sh
 
 // ---- Memoized NavButton ----
 const NavButton = React.memo(function NavButton({
-  view,
+  view: _view,
   icon: Icon,
   label,
   shortcut,

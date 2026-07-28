@@ -15,7 +15,6 @@ import {
   Flame,
   Target,
   BookOpen,
-  Loader2,
   AlertCircle,
   Award,
   type LucideIcon,
@@ -23,8 +22,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { AnimatedNumber } from '@/components/premium/animated-number';
 import { useAppStore } from '@/stores/app-store';
-import { cn, formatDuration } from '@/lib/utils';
-import { fadeInUp } from '@/lib/animations';
+import { cn } from '@/lib/utils';
 import type { WeeklyWrapped } from '@/types';
 
 const GRADE_STYLES: Record<string, { color: string; bg: string; ring: string; label: string }> = {

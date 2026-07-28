@@ -8,7 +8,6 @@ import {
   Zap,
   Timer,
   TrendingUp,
-  Loader2,
   AlertCircle,
   CalendarDays,
   Activity,
@@ -19,7 +18,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { AnimatedNumber } from '@/components/premium/animated-number';
 import { useAppStore } from '@/stores/app-store';
-import { cn, formatDuration, formatDurationCompact } from '@/lib/utils';
+import { cn, formatDuration } from '@/lib/utils';
 import { staggerContainer, staggerItem } from '@/lib/animations';
 import type { WeeklyData } from '@/types';
 

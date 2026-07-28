@@ -21,7 +21,6 @@ import { OnboardingFlow } from '@/components/onboarding/onboarding-flow';
 import { FocusMode } from '@/components/timer/focus-mode';
 import { AssistantView } from '@/components/assistant/assistant-view';
 import { Loader2 } from 'lucide-react';
-import { toast } from 'sonner';
 import { useMounted } from '@/hooks/use-mounted';
 import { useDesktopIntegration } from '@/hooks/use-desktop-integration';
 import { useWebsocketSync } from '@/hooks/use-websocket-sync';
@@ -76,9 +75,10 @@ export default function HomePage() {
   useEffect(() => {
     if (desktop.isElectron && status === 'authenticated' && session) {
       // Get the NextAuth session token and send it to Electron
-      const token = (session as any)?.accessToken || '';
+      const token = (session as unknown as Record<string, unknown>)?.accessToken as string || '';
       desktop.sendAuthToken(token || 'session-based').catch(() => {});
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- desktop object is stable via hook, only depends on isElectron/sendAuthToken
   }, [desktop.isElectron, status, session, desktop.sendAuthToken]);
 
   useEffect(() => {

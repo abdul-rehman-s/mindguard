@@ -6,7 +6,7 @@ import { buildMemoryContext } from '@/lib/memory';
 import { getFullPredictions } from '@/lib/predictions';
 import { calculateStreak, calculateFocusScore } from '@/lib/analytics';
 import { logError } from '@/lib/logger';
-import { format, startOfDay, subDays } from 'date-fns';
+import { startOfDay, subDays } from 'date-fns';
 import type { AIRecommendation } from '@/types';
 
 export async function GET() {

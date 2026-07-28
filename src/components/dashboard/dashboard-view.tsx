@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import {
   Timer,
@@ -10,7 +10,6 @@ import {
   Play,
   Target,
   ChevronRight,
-  Loader2,
   AlertCircle,
   ArrowUpRight,
   TrendingUp,
@@ -18,19 +17,16 @@ import {
   Sun,
   SunDim,
   Moon,
-  Monitor,
   Wifi,
   WifiOff,
-  AppWindow,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useAppStore } from '@/stores/app-store';
-import { cn, formatDuration, timeAgo, getGreeting } from '@/lib/utils';
+import { cn, formatDuration, timeAgo } from '@/lib/utils';
 import { staggerContainer, staggerItem, fadeInUp } from '@/lib/animations';
 import { AnimatedNumber } from '@/components/premium/animated-number';
-import type { DashboardStats } from '@/types';
 
 import { playClick } from '@/lib/sounds';
 

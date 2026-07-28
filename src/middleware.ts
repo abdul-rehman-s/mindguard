@@ -2,7 +2,6 @@
 // Protects all routes except auth endpoints and static assets.
 // Redirects unauthenticated users to the landing page.
 
-import { NextResponse } from "next/server";
 import { withAuth } from "next-auth/middleware";
 
 export default withAuth({

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getAuthUserId } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { logError } from "@/lib/logger";
-import { startOfDay, endOfDay, subDays, format } from "date-fns";
+import { startOfDay, subDays, format } from "date-fns";
 import type { ActivityType, BehavioralCoachData } from "@/types";
 
 const PRODUCTIVE_TYPES: ActivityType[] = ["focus", "deep_work", "learning", "coding", "writing"];
@@ -33,7 +33,7 @@ export async function GET(request: Request) {
     });
 
     // Get last week's activities for comparison
-    const lastWeekActivities = await db.desktopActivity.findMany({
+    const _lastWeekActivities = await db.desktopActivity.findMany({
       where: { userId, startedAt: { gte: twoWeeksAgo, lte: weekAgo } },
       orderBy: { startedAt: "asc" },
     });

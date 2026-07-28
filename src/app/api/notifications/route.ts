@@ -91,7 +91,7 @@ export async function PUT() {
     const todayStr = format(now, 'yyyy-MM-dd');
     const todayStart = startOfDay(now);
 
-    const [todaySessions, reflection, activeMissions, user, lastNotification] = await Promise.all([
+    const [todaySessions, reflection, activeMissions, _user, lastNotification] = await Promise.all([
       db.focusSession.findMany({
         where: { userId, startedAt: { gte: todayStart } },
         select: { duration: true, startedAt: true },
@@ -122,13 +122,12 @@ export async function PUT() {
       take: 5,
     });
 
-    let desktopIdleMinutes = 0;
+    const _desktopIdleMinutes = 0;
     if (desktopActivities.length > 0) {
       const lastDesktopActivity = desktopActivities[0];
-      const lastActivityEnd = lastDesktopActivity.endedAt
+      const _lastActivityEnd = lastDesktopActivity.endedAt
         ? new Date(lastDesktopActivity.endedAt).getTime()
         : new Date(lastDesktopActivity.startedAt).getTime() + lastDesktopActivity.duration * 1000;
-      desktopIdleMinutes = Math.max(0, Math.round((now.getTime() - lastActivityEnd) / 60000));
     }
 
     if (todaySessions.length > 0 || desktopActivities.length > 0) {

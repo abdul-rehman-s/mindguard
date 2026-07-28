@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Sunset, Trophy, AlertTriangle, TrendingDown, Lightbulb, Loader2, RefreshCw, ArrowRight } from 'lucide-react';
+import { Sunset, Trophy, AlertTriangle, TrendingDown, Lightbulb, RefreshCw, ArrowRight } from 'lucide-react';
 import { useAppStore } from '@/stores/app-store';
 import { cn } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -35,7 +35,7 @@ export const EveningReviewPanel = React.memo(function EveningReviewPanel() {
       if (!res.ok) throw new Error('Failed to fetch evening review');
       const data: EveningReview = await res.json();
       setEveningReview(data);
-    } catch (err) {
+    } catch {
       setError('Failed to generate evening review. Please try again.');
     } finally {
       setIsLoading(false);

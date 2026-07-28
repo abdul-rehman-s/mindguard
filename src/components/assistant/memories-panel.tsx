@@ -2,10 +2,10 @@
 
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Brain, Search, Sparkles, Loader2, RefreshCw, AlertTriangle, Plus, Filter } from 'lucide-react';
+import { Brain, Search, Sparkles, Loader2, RefreshCw, AlertTriangle } from 'lucide-react';
 import { useAppStore } from '@/stores/app-store';
 import { cn } from '@/lib/utils';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -64,7 +64,7 @@ export const MemoriesPanel = React.memo(function MemoriesPanel() {
       if (!res.ok) throw new Error('Failed to fetch memories');
       const data = await res.json();
       setMemories(data);
-    } catch (err) {
+    } catch {
       setError('Failed to load memories. Please try again.');
     } finally {
       setIsLoading(false);
@@ -81,7 +81,7 @@ export const MemoriesPanel = React.memo(function MemoriesPanel() {
       if (!res.ok) throw new Error('Search failed');
       const data = await res.json();
       setSearchResults(data);
-    } catch (err) {
+    } catch {
       setSearchResults([]);
     }
   }, [searchQuery]);
@@ -91,10 +91,10 @@ export const MemoriesPanel = React.memo(function MemoriesPanel() {
     try {
       const res = await fetch('/api/memories/generate', { method: 'POST' });
       if (!res.ok) throw new Error('Generation failed');
-      const data = await res.json();
+      await res.json();
       // Refresh memories after generation
       await fetchMemories(activeType === 'all' ? undefined : activeType);
-    } catch (err) {
+    } catch {
       // Silent fail
     } finally {
       setIsGenerating(false);

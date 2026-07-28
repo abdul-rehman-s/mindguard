@@ -7,6 +7,7 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { useAppStore } from '@/stores/app-store';
+import type { ActivityType } from '@/types';
 
 interface WSMessage {
   type: string;
@@ -88,7 +89,7 @@ export function useWebsocketSync() {
             connected: true,
             currentApp: payload.app || desktopStatus.currentApp,
             currentWebsite: payload.website || desktopStatus.currentWebsite,
-            currentActivityType: payload.type || desktopStatus.currentActivityType,
+            currentActivityType: (payload.type as ActivityType | undefined) || desktopStatus.currentActivityType,
             idleMinutes: payload.idleMinutes ?? desktopStatus.idleMinutes,
             lastActivityAt: msg.timestamp,
             focusState: payload.focusState || desktopStatus.focusState || 'idle',
@@ -99,7 +100,7 @@ export function useWebsocketSync() {
             trackingEnabled: true,
             currentApp: payload.app || null,
             currentWebsite: payload.website || null,
-            currentActivityType: payload.type || null,
+            currentActivityType: (payload.type as ActivityType | undefined) || null,
             idleMinutes: payload.idleMinutes ?? 0,
             lastActivityAt: msg.timestamp,
             focusState: payload.focusState || 'idle',
@@ -200,6 +201,7 @@ export function useWebsocketSync() {
         scheduleReconnect();
       }
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- scheduleReconnect uses refs only, stable identity
   }, [handleMessage]);
 
   // Schedule reconnect — uses refs to avoid circular dependency

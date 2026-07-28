@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { TrendingUp, AlertTriangle, Target, Clock, Flame, Loader2, RefreshCw } from 'lucide-react';
+import { TrendingUp, AlertTriangle, Target, Clock, Flame, RefreshCw } from 'lucide-react';
 import { useAppStore } from '@/stores/app-store';
 import { cn } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -33,7 +33,7 @@ export const PredictionsPanel = React.memo(function PredictionsPanel() {
       if (!res.ok) throw new Error('Failed to fetch predictions');
       const data: PredictionResult = await res.json();
       setPredictions(data);
-    } catch (err) {
+    } catch {
       setError('Failed to generate predictions. Please try again.');
     } finally {
       setIsLoading(false);

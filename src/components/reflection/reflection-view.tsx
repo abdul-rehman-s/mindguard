@@ -18,7 +18,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent } from '@/components/ui/card';
 import { useAppStore } from '@/stores/app-store';
-import { cn, formatDateDisplay, formatTimeDisplay } from '@/lib/utils';
+import { cn, formatDateDisplay } from '@/lib/utils';
 import { staggerContainer, staggerItem } from '@/lib/animations';
 import { toast } from 'sonner';
 import type { DailyReflection } from '@/types';
@@ -122,7 +122,7 @@ const ReflectionCard = React.memo(function ReflectionCard({ reflection }: { refl
 });
 
 export function ReflectionView() {
-  const todayReflection = useAppStore(s => s.todayReflection);
+  const _todayReflection = useAppStore(s => s.todayReflection);
   const setTodayReflection = useAppStore(s => s.setTodayReflection);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);

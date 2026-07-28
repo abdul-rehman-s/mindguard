@@ -8,7 +8,6 @@ import {
   Target,
   ChevronLeft,
   ChevronRight,
-  Loader2,
   AlertCircle,
   Filter,
 } from 'lucide-react';

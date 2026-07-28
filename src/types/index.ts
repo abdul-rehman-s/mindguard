@@ -313,6 +313,14 @@ export interface BatchActivityInput {
 
 // ─── Desktop Agent types ───
 
+export interface SyncStatusInfo {
+  status: 'idle' | 'syncing' | 'error';
+  pendingCount: number;
+  failedCount: number;
+  lastSyncAt: string | null;
+  lastError: string | null;
+}
+
 export interface DesktopStatus {
   connected: boolean;
   trackingEnabled: boolean;
@@ -321,6 +329,8 @@ export interface DesktopStatus {
   currentActivityType: ActivityType | null;
   idleMinutes: number;
   lastActivityAt: string | null;
+  focusState?: string;
+  syncStatus?: SyncStatusInfo;
 }
 
 export interface DesktopTimelineEntry {

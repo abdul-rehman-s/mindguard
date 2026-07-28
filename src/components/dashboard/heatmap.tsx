@@ -15,7 +15,7 @@ function getHeatColor(minutes: number): string {
 
 // ---- Heatmap Day Cell (React.memo, regular div + CSS transition) ----
 const HeatmapDayCell = React.memo(function HeatmapDayCell({
-  date,
+  date: _date,
   day,
   onHover,
 }: {

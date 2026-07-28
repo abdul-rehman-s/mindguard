@@ -266,7 +266,7 @@ wss.on('connection', (ws: WebSocket) => {
     }
   });
 
-  ws.on('close', (code: number, reason: string) => {
+  ws.on('close', (code: number, _reason: string) => {
     clients.delete(clientId);
     log('info', `Client disconnected: ${clientId} (code: ${code}, total: ${clients.size})`);
   });
@@ -323,7 +323,7 @@ function shutdown(): void {
   log('info', 'Shutting down...');
 
   // Send close frames to all connected clients
-  for (const [clientId, client] of clients) {
+  for (const [_clientId, client] of clients) {
     if (client.ws.readyState === WebSocket.OPEN) {
       client.ws.close(1001, 'Server shutting down');
     }

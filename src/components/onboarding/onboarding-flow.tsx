@@ -7,7 +7,6 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
-import { fadeInUp } from '@/lib/animations';
 
 const USES = ['Coding', 'Studying', 'Reading', 'Writing', 'Business', 'Health', 'Personal Growth'];
 
@@ -33,7 +32,7 @@ export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
   const [primaryUse, setPrimaryUse] = useState('');
   const [mission, setMission] = useState('');
   const [duration, setDuration] = useState(25);
-  const [customDuration, setCustomDuration] = useState('');
+  const [customDuration, _setCustomDuration] = useState('');
   const [checks, setChecks] = useState<Record<string, boolean>>({});
   const [saving, setSaving] = useState(false);
 

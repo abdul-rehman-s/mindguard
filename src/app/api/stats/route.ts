@@ -3,7 +3,7 @@ import { getAuthUserId } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { calculateStreak, calculateFocusScore } from "@/lib/analytics";
 import { logError } from "@/lib/logger";
-import { format, subDays, startOfDay, endOfDay, isSameDay, startOfWeek } from "date-fns";
+import { format, subDays, startOfDay, isSameDay, startOfWeek } from "date-fns";
 import type { ActivityType } from "@/types";
 
 const PRODUCTIVE_ACTIVITY_TYPES: ActivityType[] = ["focus", "deep_work", "learning", "coding", "writing"];

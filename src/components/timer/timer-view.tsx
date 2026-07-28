@@ -15,7 +15,6 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { useAppStore } from '@/stores/app-store';
 import { MissionLaunch } from './mission-launch';
-import { fadeInUp } from '@/lib/animations';
 import type { Mission } from '@/types';
 
 const PRESETS = [

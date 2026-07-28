@@ -54,8 +54,8 @@ import {
 } from '@/components/ui/select';
 import { useAppStore } from '@/stores/app-store';
 import { cn, formatDuration } from '@/lib/utils';
-import { staggerContainer, staggerItem, fadeInUp } from '@/lib/animations';
-import type { Mission, MissionPriority, MissionWithSessions } from '@/types';
+import { staggerContainer, staggerItem } from '@/lib/animations';
+import type { MissionPriority, MissionWithSessions } from '@/types';
 
 // Using shared staggerContainer/staggerItem from @/lib/animations
 

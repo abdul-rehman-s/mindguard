@@ -2,10 +2,10 @@
 
 import React, { useEffect, useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Clock, Loader2, RefreshCw, AlertTriangle } from 'lucide-react';
+import { Clock, RefreshCw, AlertTriangle } from 'lucide-react';
 import { useAppStore } from '@/stores/app-store';
 import { cn } from '@/lib/utils';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -37,7 +37,7 @@ export const AITimelinePanel = React.memo(function AITimelinePanel() {
       if (!res.ok) throw new Error('Failed to fetch AI timeline');
       const data: AITimelineEntry[] = await res.json();
       setAITimeline(data);
-    } catch (err) {
+    } catch {
       setError('Failed to generate AI timeline. Please try again.');
     } finally {
       setIsLoading(false);

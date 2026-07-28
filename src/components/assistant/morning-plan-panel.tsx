@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Sunrise, Target, AlertTriangle, Sparkles, Clock, Loader2, RefreshCw, ArrowRight } from 'lucide-react';
+import { Target, AlertTriangle, Sparkles, Clock, RefreshCw, ArrowRight } from 'lucide-react';
 import { useAppStore } from '@/stores/app-store';
 import { cn } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -40,7 +40,7 @@ export const MorningPlanPanel = React.memo(function MorningPlanPanel() {
       if (!res.ok) throw new Error('Failed to fetch morning briefing');
       const data: MorningBriefing = await res.json();
       setMorningBriefing(data);
-    } catch (err) {
+    } catch {
       setError('Failed to generate morning briefing. Please try again.');
     } finally {
       setIsLoading(false);

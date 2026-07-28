@@ -3,7 +3,7 @@ import { getAuthUserId } from '@/lib/auth-utils';
 import { db } from '@/lib/db';
 import { calculateStreak, calculateFocusScore } from '@/lib/analytics';
 import { logError } from '@/lib/logger';
-import { format, startOfDay, endOfDay, subDays, startOfWeek, isSameDay } from 'date-fns';
+import { format, startOfDay, endOfDay, subDays, isSameDay } from 'date-fns';
 import type { ActivityType } from '@/types';
 
 const PRODUCTIVE_TYPES: ActivityType[] = ['focus', 'deep_work', 'learning', 'coding', 'writing'];
@@ -33,7 +33,7 @@ export async function GET() {
     const todayEnd = endOfDay(now);
     const weekAgo = subDays(now, 6);
 
-    const [sessions, activities, missions, user, achievements, reflections, streak, desktopSettings] = await Promise.all([
+    const [sessions, activities, missions, user, _achievements, _reflections, streak, desktopSettings] = await Promise.all([
       // All sessions this week
       db.focusSession.findMany({
         where: { userId, startedAt: { gte: weekAgo } },

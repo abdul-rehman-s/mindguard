@@ -1,6 +1,6 @@
 import { db } from '@/lib/db';
-import { subDays, format, startOfDay } from 'date-fns';
-import { calculateStreak, calculateFocusScore, findBestHour } from '@/lib/analytics';
+import { subDays, startOfDay } from 'date-fns';
+import { calculateStreak, calculateFocusScore } from '@/lib/analytics';
 import { logError } from '@/lib/logger';
 import type { PredictionResult } from '@/types';
 

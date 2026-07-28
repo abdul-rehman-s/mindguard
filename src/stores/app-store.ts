@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { AppView, DashboardStats, WeeklyData, FocusModeState, OnboardingData, CoachData, WeeklyWrapped, LifeDashboardData, DailyReviewData, NotificationItem, DesktopStatus, DesktopSettingsData, ProductivityMetrics, BehavioralCoachData, DesktopTimelineEntry, ConversationMessage, MorningBriefing, EveningReview, PredictionResult, AIRecommendation, AITimelineEntry, MemoryItem } from "@/types";
+import type { AppView, DashboardStats, WeeklyData, FocusModeState, CoachData, WeeklyWrapped, LifeDashboardData, DailyReviewData, NotificationItem, DesktopStatus, DesktopSettingsData, ProductivityMetrics, BehavioralCoachData, DesktopTimelineEntry, ConversationMessage, MorningBriefing, EveningReview, PredictionResult, AIRecommendation, AITimelineEntry, MemoryItem } from "@/types";
 import type { Mission, FocusSession, DailyReflection, Achievement } from "@prisma/client";
 
 export type SafeUser = {

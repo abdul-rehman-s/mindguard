@@ -8,7 +8,6 @@ import {
   startOfWeek,
   endOfWeek,
   subDays,
-  startOfDay,
   differenceInCalendarDays,
   eachDayOfInterval,
 } from 'date-fns';
@@ -129,7 +128,7 @@ export async function GET() {
           dayAgg[0]
         )
       : undefined;
-    const bestDayPayload = bestDay
+    const _bestDayPayload = bestDay
       ? { day: bestDay.dayLabel, minutes: bestDay.minutes, sessions: bestDay.sessions }
       : null;
 
