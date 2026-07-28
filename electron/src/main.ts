@@ -108,14 +108,14 @@ async function initializeSystems(): Promise<void> {
   localDB.initialize();
 
   // 2. Security Manager
-  securityManager = new SecurityManager();
+  securityManager = new SecurityManager(localDB);
 
   // 3. Sync Engine
   syncEngine = new SyncEngine(localDB, WEB_URL);
 
   // 4. Settings Manager
   settingsManager = new SettingsManager(localDB, syncEngine);
-  await settingsManager.syncFromWebAPI();
+    await settingsManager.syncFromWebAPI();
 
   const settings = settingsManager.getSettings();
 

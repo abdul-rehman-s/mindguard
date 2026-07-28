@@ -6,18 +6,20 @@
   "author": "Abdul Rehman <abdulrehmansudais824@gmail.com>",
   "license": "MIT",
   "scripts": {
-      "dev": "tsc && electron .",
-      "build": "tsc",
-      "watch": "tsc --watch",
-      "pack": "node scripts/build-prod.js --win --dir",
-      "dist": "node scripts/build-prod.js --win",
-      "dist:portable": "electron-builder --win portable",
-      "postinstall": "node scripts/rebuild-native.js"
-    },
+    "dev": "tsc && electron .",
+    "build": "tsc",
+    "watch": "tsc --watch",
+    "lint": "tsc --noEmit",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder --win",
+    "dist:portable": "electron-builder --win portable",
+    "postinstall": "electron-builder install-app-deps"
+  },
   "dependencies": {
     "active-win": "^8.1.0",
     "better-sqlite3": "^11.7.0",
     "electron-is-dev": "^3.0.1",
+    "electron-store": "^10.0.0",
     "electron-updater": "^6.3.0",
     "ws": "^8.18.0"
   },
@@ -27,9 +29,6 @@
     "@types/better-sqlite3": "^7.6.12",
     "@types/ws": "^8.5.12",
     "typescript": "^5.7.0"
-  },
-  "overrides": {
-    "node-gyp": "13.0.1"
   },
   "build": {
     "appId": "com.abdulrehman.mindguard",

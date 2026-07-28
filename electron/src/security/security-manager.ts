@@ -1,47 +1,56 @@
 // MindGuard Desktop — Security Manager
-// Handles encrypted local storage, JWT token management, secure IPC validation
+// Handles encrypted local storage, JWT token management, secure IPC validation.
+// Uses better-sqlite3 (via LocalDB) instead of electron-store (ESM-only).
 
 import { logger } from '../logger/logger';
 import { encrypt, decrypt, generateKey, hash } from '../utils/crypto';
-import Store from 'electron-store';
+import { LocalDB } from '../database/local-db';
+
+const ENCRYPTION_KEY_KEY = 'security_encryption_key';
+const AUTH_TOKEN_KEY = 'security_auth_token';
 
 export class SecurityManager {
-  private store: Store<Record<string, string>>;
+  private localDB: LocalDB;
   private encryptionKey: string;
   private authToken: string | null = null;
-  private authHash: string | null = null; // Hashed version for verification
+  private authHash: string | null = null;
 
-  constructor() {
-    this.store = new Store<Record<string, string>>({
-      name: 'mindguard-security',
-      encryptionKey: 'mindguard-security-v5',
-    });
+  constructor(localDB: LocalDB) {
+    this.localDB = localDB;
 
-    // Get or generate encryption key
-    this.encryptionKey = (this.store as any).get('encryptionKey') as string;
-    if (!this.encryptionKey) {
-      this.encryptionKey = generateKey();
-      (this.store as any).set('encryptionKey', this.encryptionKey);
+    // Get or generate encryption key from the DB
+        const storedKey = this.getSetting(ENCRYPTION_KEY_KEY);
+        if (storedKey) {
+          this.encryptionKey = storedKey;
+        } else {
+          this.encryptionKey = generateKey();
+          this.setSetting(ENCRYPTION_KEY_KEY, this.encryptionKey);
+        }
+
+    // Restore auth token if one was persisted
+    const encryptedToken = this.getSetting(AUTH_TOKEN_KEY);
+    if (encryptedToken) {
+      try {
+        this.authToken = decrypt(encryptedToken, this.encryptionKey);
+        this.authHash = this.authToken ? hash(this.authToken) : null;
+      } catch {
+        logger.warn('SecurityManager', 'Failed to restore auth token from DB');
+      }
     }
   }
 
   storeAuthToken(token: string): void {
-    // Encrypt the token before storing
     const encrypted = encrypt(token, this.encryptionKey);
-    (this.store as any).set('authToken', encrypted);
-
-    // Store hash for quick verification
+    this.setSetting(AUTH_TOKEN_KEY, encrypted);
     this.authHash = hash(token);
     this.authToken = token;
-
     logger.info('SecurityManager', 'Auth token stored securely');
   }
 
   getAuthToken(): string | null {
     if (this.authToken) return this.authToken;
 
-    // Try to decrypt from storage
-    const encrypted = (this.store as any).get('authToken') as string;
+    const encrypted = this.getSetting(AUTH_TOKEN_KEY);
     if (!encrypted) return null;
 
     try {
@@ -56,7 +65,7 @@ export class SecurityManager {
   clearAuthToken(): void {
     this.authToken = null;
     this.authHash = null;
-    (this.store as any).delete('authToken');
+    this.deleteSetting(AUTH_TOKEN_KEY);
     logger.info('SecurityManager', 'Auth token cleared');
   }
 
@@ -72,9 +81,7 @@ export class SecurityManager {
     return decrypt(encrypted, this.encryptionKey);
   }
 
-  // Validate IPC inputs to prevent injection attacks
   validateIPCInput(channel: string, input: unknown): boolean {
-    // Only allow known IPC channels
     const allowedChannels = [
       'desktop:get-status',
       'desktop:get-settings',
@@ -98,11 +105,9 @@ export class SecurityManager {
       return false;
     }
 
-    // Type-check input
-    if (input === null || input === undefined) return true; // Some channels have void input
+    if (input === null || input === undefined) return true;
 
     if (typeof input === 'string') {
-      // Prevent overly long strings
       if (input.length > 10000) {
         logger.warn('SecurityManager', 'Rejected overly long string input', { channel, length: input.length });
         return false;
@@ -111,7 +116,6 @@ export class SecurityManager {
     }
 
     if (typeof input === 'object') {
-      // Prevent deeply nested objects
       const depth = this.getObjectDepth(input);
       if (depth > 5) {
         logger.warn('SecurityManager', 'Rejected deeply nested input', { channel, depth });
@@ -126,17 +130,49 @@ export class SecurityManager {
     return false;
   }
 
+  // =========================================================================
+  // Private helpers — settings table CRUD (replaces electron-store)
+  // =========================================================================
+
+  private getSetting(key: string): string | null {
+    try {
+      const db = (this.localDB as unknown as { db: { prepare: (sql: string) => { get: (...args: unknown[]) => unknown } } }).db;
+      const row = db?.prepare('SELECT value FROM settings WHERE key = ?').get(key) as { value: string } | undefined;
+      return row?.value ?? null;
+    } catch {
+      return null;
+    }
+  }
+
+  private setSetting(key: string, value: string): void {
+    try {
+      const db = (this.localDB as unknown as { db: { prepare: (sql: string) => { run: (...args: unknown[]) => void } } }).db;
+      db?.prepare(
+        'INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value',
+      ).run(key, value);
+    } catch (err) {
+      logger.error('SecurityManager', `Failed to write setting ${key}`, { error: String(err) });
+    }
+  }
+
+  private deleteSetting(key: string): void {
+    try {
+      const db = (this.localDB as unknown as { db: { prepare: (sql: string) => { run: (...args: unknown[]) => void } } }).db;
+      db?.prepare('DELETE FROM settings WHERE key = ?').run(key);
+    } catch (err) {
+      logger.error('SecurityManager', `Failed to delete setting ${key}`, { error: String(err) });
+    }
+  }
+
   private getObjectDepth(obj: unknown, maxDepth = 10): number {
     if (maxDepth <= 0) return 10;
     if (typeof obj !== 'object' || obj === null) return 0;
-
     let maxChildDepth = 0;
     const record = obj as Record<string, unknown>;
     for (const key of Object.keys(record)) {
       const childDepth = this.getObjectDepth(record[key], maxDepth - 1);
       maxChildDepth = Math.max(maxChildDepth, childDepth);
     }
-
     return 1 + maxChildDepth;
   }
 }
