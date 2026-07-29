@@ -589,6 +589,34 @@
   animation: focus-breathe-bg 4s ease-in-out infinite;
 }
 
+/* ──── CTA Primary Breathing Glow ──── */
+.cta-primary {
+  position: relative;
+  z-index: 1;
+}
+
+.cta-primary::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: inherit;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(20, 184, 166, 0.15));
+  opacity: 0;
+  filter: blur(12px);
+  z-index: -1;
+  transition: opacity 0.4s ease;
+  animation: cta-breathe 3s ease-in-out infinite;
+}
+
+.cta-primary:hover::after {
+  opacity: 1;
+}
+
+@keyframes cta-breathe {
+  0%, 100% { opacity: 0.3; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(1.02); }
+}
+
 /* ──── Premium selection ──── */
 ::selection {
   background: rgba(16, 185, 129, 0.3);

@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { motion, AnimatePresence, useMotionValue, useSpring } from 'framer-motion';
 import {
   ArrowRight,
   Star,
@@ -17,6 +17,13 @@ import {
   EyeOff,
   CheckCircle2,
   Flame,
+  Brain,
+  Zap,
+  Trophy,
+  ChevronRight,
+  Cpu,
+  Layers,
+  Play,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -38,17 +45,21 @@ import {
   heroItem,
   AnimatedSection,
   StarRating,
-  InteractiveDemo,
+  ProductShowcase,
   features,
   testimonials,
   faqItems,
+  howItWorks,
 } from './landing-data';
+
+/* ─── Premium ease curves ─── */
+const APPLE_EASE = [0.22, 1, 0.36, 1] as [number, number, number, number];
 
 /* ─── Ambient orbs ─── */
 const ambientOrbs = [
-  { size: 800, opacity: 0.06, x: '-15%', y: '-10%', delay: '0s' },
-  { size: 600, opacity: 0.04, x: '55%', y: '5%', delay: '2s' },
-  { size: 400, opacity: 0.03, x: '20%', y: '55%', delay: '4s' },
+  { size: 900, opacity: 0.05, x: '-15%', y: '-10%', delay: '0s' },
+  { size: 700, opacity: 0.035, x: '55%', y: '5%', delay: '2s' },
+  { size: 500, opacity: 0.025, x: '20%', y: '55%', delay: '4s' },
 ];
 
 /* ─── Security features ─── */
@@ -116,6 +127,31 @@ const pricingTiers = [
   },
 ];
 
+/* ─── Cursor Glow Component ─── */
+function CursorGlow() {
+  const glowRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (glowRef.current) {
+        glowRef.current.style.transform = `translate(${e.clientX}px, ${e.clientY}px)`;
+      }
+    };
+    window.addEventListener('mousemove', handler, { passive: true });
+    return () => window.removeEventListener('mousemove', handler);
+  }, []);
+
+  return (
+    <div
+      ref={glowRef}
+      className="pointer-events-none fixed z-0 h-[500px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-[0.03] transition-opacity duration-700"
+      style={{
+        background: 'radial-gradient(circle, rgba(16,185,129,0.3) 0%, transparent 70%)',
+      }}
+    />
+  );
+}
+
 /* ─── Testimonial carousel ─── */
 
 function TestimonialCarousel() {
@@ -160,7 +196,7 @@ function TestimonialCarousel() {
               <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-emerald-500/[0.05] blur-[40px]" />
               <Quote className="mb-3 h-5 w-5 text-emerald-500/20" />
               <StarRating rating={t.rating} />
-              <Badge className="mt-3 bg-emerald-500/[0.08] text-emerald-400 text-[10px] ring-1 ring-emerald-500/15 border-emerald-500/20 px-2 py-0.5 font-medium">
+              <Badge className="mt-3 bg-emerald-500/[0.08] text-emerald-400 text-[10px] ring-1 ring-emerald-500/15 border-emerald-500/20 px-2 py-0.5 font-medium w-fit">
                 {t.metric}
               </Badge>
               <p className="mt-4 mb-5 flex-1 text-sm leading-relaxed text-zinc-300">
@@ -220,12 +256,15 @@ export function LandingPage() {
   /* ═══════════════════════════════════════════════════════════════════ */
   return (
     <div className="relative flex min-h-screen flex-col overflow-x-hidden bg-zinc-950">
+      {/* ═══ Cursor Glow ═══ */}
+      <CursorGlow />
+
       {/* ═══ Background Layer ═══ */}
       <div className="pointer-events-none fixed inset-0 z-0">
         {/* Radial vignette */}
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,rgba(9,9,11,0.4)_70%)]" />
 
-        {/* Animated gradient background — slower, calmer */}
+        {/* Animated gradient background */}
         <motion.div
           className="absolute inset-0"
           animate={{
@@ -239,7 +278,7 @@ export function LandingPage() {
           transition={{ duration: 25, repeat: Infinity, ease: 'linear' }}
         />
 
-        {/* Ambient floating orbs — slower, more meditative */}
+        {/* Ambient floating orbs */}
         {ambientOrbs.map((orb, i) => (
           <motion.div
             key={i}
@@ -256,6 +295,9 @@ export function LandingPage() {
             transition={{ duration: 12 + i * 3, repeat: Infinity, ease: 'easeInOut', delay: i * 2 }}
           />
         ))}
+
+        {/* Noise texture */}
+        <div className="absolute inset-0 opacity-[0.015]" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=\'0 0 256 256\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'noise\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.9\' numOctaves=\'4\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23noise)\'/%3E%3C/svg%3E")' }} />
       </div>
 
       {/* ═══ Content Layer ═══ */}
@@ -265,10 +307,10 @@ export function LandingPage() {
         <motion.nav
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+          transition={{ duration: 0.6, ease: APPLE_EASE }}
           className={cn(
-            'sticky top-0 z-50 mx-auto w-full transition-all duration-300',
-            scrolled ? 'border-b border-zinc-800/40 bg-zinc-950/80 backdrop-blur-xl' : 'bg-transparent',
+            'sticky top-0 z-50 mx-auto w-full transition-all duration-500',
+            scrolled ? 'border-b border-zinc-800/40 bg-zinc-950/80 backdrop-blur-xl shadow-lg shadow-black/10' : 'bg-transparent',
           )}
         >
           <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
@@ -279,26 +321,25 @@ export function LandingPage() {
             <div className="hidden items-center gap-1 md:flex">
               {[
                 { label: 'Features', id: 'features-section' },
-                { label: 'Demo', id: 'demo-section' },
+                { label: 'How It Works', id: 'how-it-works-section' },
                 { label: 'Pricing', id: 'pricing-section' },
                 { label: 'FAQ', id: 'faq-section' },
               ].map((link) => (
-                <Button
+                <button
                   key={link.label}
-                  variant="ghost"
-                  size="sm"
-                  className="cursor-pointer text-sm text-zinc-400 hover:text-zinc-200"
+                  type="button"
+                  className="cursor-pointer text-sm text-zinc-400 hover:text-zinc-200 transition-colors duration-200 px-3 py-1.5 rounded-lg hover:bg-white/[0.04]"
                   onClick={() => scrollToSection(link.id)}
                 >
                   {link.label}
-                </Button>
+                </button>
               ))}
             </div>
 
-            {/* CTA — conversational copy */}
+            {/* CTA */}
             <Button
               size="sm"
-              className="hidden md:flex cursor-pointer rounded-lg bg-gradient-to-b from-emerald-500 to-emerald-600 text-white ring-1 ring-emerald-500/20 hover:from-emerald-400 hover:to-emerald-500 text-sm font-semibold border-0 shadow-lg shadow-emerald-500/15 transition-all"
+              className="hidden md:flex cursor-pointer rounded-lg bg-gradient-to-b from-emerald-500 to-emerald-600 text-white ring-1 ring-emerald-500/20 hover:from-emerald-400 hover:to-emerald-500 text-sm font-semibold border-0 shadow-lg shadow-emerald-500/15 transition-all duration-300 hover:shadow-xl hover:shadow-emerald-500/25 hover:scale-[1.02] active:scale-[0.98]"
               onClick={() => scrollToSection('auth-section')}
             >
               Get Started Free
@@ -317,20 +358,20 @@ export function LandingPage() {
         </motion.nav>
 
         {/* ═════════════════ 1. HERO SECTION ═════════════════ */}
-        <section className="relative flex min-h-[88vh] flex-col items-center justify-center px-4 py-12 sm:px-6 lg:py-20">
+        <section className="relative flex min-h-[92vh] flex-col items-center justify-center px-4 py-16 sm:px-6 lg:py-24">
           <div className="mx-auto w-full max-w-7xl lg:px-8">
             <motion.div
               variants={heroContainer}
               initial="hidden"
               animate="visible"
-              className="flex flex-col items-center gap-12 lg:flex-row lg:gap-16 lg:items-center"
+              className="flex flex-col items-center gap-16 lg:flex-row lg:gap-20 lg:items-center"
             >
               {/* ── Hero Text Column ── */}
-              <div className="flex-1 text-center lg:text-left lg:max-w-[560px]">
+              <div className="flex-1 text-center lg:text-left lg:max-w-[580px]">
                 {/* Announcement badge */}
-                <motion.div variants={heroItem} className="mb-6">
+                <motion.div variants={heroItem} className="mb-5">
                   <Badge
-                    className="cursor-default gap-2 rounded-full border-emerald-500/20 bg-emerald-500/[0.07] px-3.5 py-1.5 text-xs font-medium text-emerald-400 ring-1 ring-emerald-500/10 hover:bg-emerald-500/[0.09]"
+                    className="cursor-default gap-2 rounded-full border-emerald-500/20 bg-emerald-500/[0.07] px-3.5 py-1.5 text-xs font-medium text-emerald-400 ring-1 ring-emerald-500/10 hover:bg-emerald-500/[0.09] transition-colors"
                   >
                     <span className="relative flex h-1.5 w-1.5">
                       <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
@@ -340,10 +381,10 @@ export function LandingPage() {
                   </Badge>
                 </motion.div>
 
-                {/* Main headline — more emotional, conversational */}
+                {/* Main headline */}
                 <motion.h1
                   variants={heroItem}
-                  className="mb-5 text-[2.5rem] font-extrabold leading-[1.08] tracking-tight text-zinc-50 sm:text-[3.5rem] lg:text-[4rem]"
+                  className="mb-6 text-[2.5rem] font-black leading-[1.05] tracking-tight text-zinc-50 sm:text-[3.75rem] lg:text-[4.5rem]"
                 >
                   Your focus deserves{' '}
                   <span className="gradient-text">a coach.</span>
@@ -351,113 +392,138 @@ export function LandingPage() {
                   <span className="text-zinc-200">Not another app.</span>
                 </motion.h1>
 
-                {/* Subtitle — conversational, not marketing-y */}
+                {/* Subtitle */}
                 <motion.p
                   variants={heroItem}
-                  className="mb-8 text-[1rem] leading-[1.7] text-zinc-400 sm:text-[1.1rem]"
+                  className="mb-8 text-[1.05rem] leading-[1.75] text-zinc-300 sm:text-[1.15rem]"
                 >
-                  MindGuard learns how you work, what breaks your focus, and when you&apos;re at your best — then coaches you to do more of what works. It&apos;s like having a personal productivity partner.
+                  MindGuard learns how you work, what breaks your focus, and when you&apos;re at your best — then coaches you to do more of what works. It&apos;s like having a personal productivity partner that never sleeps.
                 </motion.p>
 
-                {/* CTA buttons — more conversational */}
-                <motion.div variants={heroItem} className="flex flex-col gap-3 sm:flex-row sm:gap-4 justify-center lg:justify-start">
+                {/* CTA buttons */}
+                <motion.div variants={heroItem} className="flex flex-col items-center gap-3 sm:flex-row sm:gap-4 lg:items-start">
                   <Button
                     size="lg"
-                    className="cursor-pointer group h-11 rounded-xl bg-gradient-to-b from-emerald-500 to-emerald-600 px-6 text-sm font-semibold text-white shadow-lg shadow-emerald-500/20 transition-all hover:from-emerald-400 hover:to-emerald-500 hover:shadow-xl hover:shadow-emerald-500/25"
+                    className="cta-primary cursor-pointer group h-13 rounded-xl bg-gradient-to-b from-emerald-500 to-emerald-600 px-8 text-base font-semibold text-white shadow-lg shadow-emerald-500/20 transition-all duration-300 hover:from-emerald-400 hover:to-emerald-500 hover:shadow-xl hover:shadow-emerald-500/30 hover:scale-[1.02] active:scale-[0.98]"
                     onClick={() => scrollToSection('auth-section')}
                   >
-                    Let&apos;s get started
-                    <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                    Meet your coach
+                    <ArrowRight className="ml-2 h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
                   </Button>
-                  <Button
-                    variant="outline"
-                    size="lg"
-                    className="cursor-pointer h-11 rounded-xl border-zinc-800/40 bg-zinc-900/30 px-6 text-sm font-medium text-zinc-300 hover:text-zinc-100 hover:bg-zinc-800/40 hover:border-zinc-700/40 shadow-none"
-                    onClick={() => scrollToSection('demo-section')}
+                  <button
+                    type="button"
+                    className="cursor-pointer inline-flex items-center gap-1.5 text-sm text-zinc-400 hover:text-emerald-400 transition-colors duration-200 py-2"
+                    onClick={() => scrollToSection('how-it-works-section')}
                   >
+                    <Play className="h-3.5 w-3.5" />
                     See how it works
-                  </Button>
+                  </button>
                 </motion.div>
 
-                {/* Trust indicators — more prominent */}
-                <motion.div variants={heroItem} className="flex items-center gap-4 mt-6 justify-center lg:justify-start">
-                  <div className="flex items-center gap-1.5">
+                {/* Micro-copy + trust below CTA */}
+                <motion.div variants={heroItem} className="flex items-center gap-3 mt-4 justify-center lg:justify-start flex-wrap">
+                  <div className="flex items-center gap-1">
                     {Array.from({ length: 5 }).map((_, i) => (
-                      <Star key={i} className="h-3.5 w-3.5 fill-emerald-400 text-emerald-400" />
+                      <Star key={i} className="h-3 w-3 fill-emerald-400 text-emerald-400" />
                     ))}
-                    <span className="ml-1 text-sm font-medium text-zinc-300">4.9/5</span>
+                    <span className="ml-1 text-xs font-medium text-zinc-400">4.9/5</span>
                   </div>
-                  <span className="text-zinc-600">·</span>
-                  <span className="text-sm text-zinc-500">10,000+ focused users</span>
+                  <span className="text-zinc-700">·</span>
+                  <span className="text-xs text-zinc-500">10,000+ focused users</span>
+                  <span className="text-zinc-700">·</span>
+                  <span className="text-xs text-zinc-500">Free forever</span>
                 </motion.div>
               </div>
 
-              {/* ── Auth Form Column ── */}
+              {/* ── Product Showcase (NOT a form) ── */}
               <motion.div
                 variants={heroItem}
-                className="w-full max-w-[420px] lg:w-[420px]"
+                className="w-full max-w-[520px] lg:w-[520px]"
               >
-                <AuthExperience onSuccess={handleAuthSuccess} />
+                <ProductShowcase />
               </motion.div>
             </motion.div>
           </div>
         </section>
 
-        {/* ═════════════════ 2. INTERACTIVE DEMO ═════════════════ */}
-        <section id="demo-section" className="border-t border-zinc-800/20 px-4 py-20 sm:px-6 lg:py-28">
+        {/* ═════════════════ 2. HOW IT WORKS ═════════════════ */}
+        <section id="how-it-works-section" className="border-t border-zinc-800/20 px-4 py-20 sm:px-6 lg:py-28">
           <div className="mx-auto max-w-7xl lg:px-8">
-            <div className="flex flex-col items-center gap-10 lg:flex-row lg:gap-14 lg:items-center">
-              {/* ── Description Column ── */}
-              <AnimatedSection className="flex-1 text-center lg:text-left lg:max-w-[480px]">
-                <Badge className="mb-4 cursor-default gap-2 rounded-full border-emerald-500/20 bg-emerald-500/[0.07] px-3.5 py-1.5 text-xs font-semibold uppercase tracking-widest text-emerald-400 ring-1 ring-emerald-500/10">
-                  <Monitor className="h-3.5 w-3.5" />
-                  Live Demo
-                </Badge>
-                <h2 className="mb-4 text-3xl font-extrabold tracking-tight text-zinc-100 sm:text-4xl lg:text-[2.8rem]">
-                  See it in{' '}
-                  <span className="gradient-text">action</span>
-                </h2>
-                <p className="mb-6 text-base leading-relaxed text-zinc-400">
-                  A live preview of the MindGuard dashboard. Timer running, missions progressing, streaks growing — all real-time.
-                </p>
-                <div className="space-y-3">
-                  {[
-                    { icon: Timer, text: 'Real-time focus timer with progress tracking' },
-                    { icon: Target, text: 'Mission system keeps you on one clear goal' },
-                    { icon: Flame, text: 'Streak visualization builds consistency' },
-                  ].map(({ icon: FeatureIcon, text }) => (
-                    <div key={text} className="flex items-center gap-3 justify-center lg:justify-start">
-                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-500/[0.08] ring-1 ring-emerald-500/10">
-                        <FeatureIcon className="h-3.5 w-3.5 text-emerald-400" />
-                      </div>
-                      <span className="text-sm text-zinc-300">{text}</span>
-                    </div>
-                  ))}
-                </div>
-              </AnimatedSection>
+            <AnimatedSection className="mb-16 text-center">
+              <Badge className="mb-4 cursor-default gap-2 rounded-full border-emerald-500/20 bg-emerald-500/[0.07] px-3.5 py-1.5 text-xs font-semibold uppercase tracking-widest text-emerald-400 ring-1 ring-emerald-500/10">
+                <Layers className="h-3.5 w-3.5" />
+                How It Works
+              </Badge>
+              <h2 className="mb-4 text-3xl font-extrabold tracking-tight text-zinc-100 sm:text-4xl lg:text-5xl">
+                Three steps to{' '}
+                <span className="gradient-text">deep work</span>
+              </h2>
+              <p className="mx-auto max-w-xl text-base leading-relaxed text-zinc-400">
+                No complicated setup. No learning curve. Just a simple system that works.
+              </p>
+            </AnimatedSection>
 
-              {/* ── Side Preview Window ── */}
-              <AnimatedSection className="w-full max-w-sm lg:max-w-[420px] lg:w-[420px]">
-                <InteractiveDemo />
-              </AnimatedSection>
+            <div className="grid gap-6 md:grid-cols-3">
+              {howItWorks.map((step, i) => {
+                const Icon = step.icon;
+                return (
+                  <AnimatedSection key={step.step} delay={i * 0.1}>
+                    <div className="glass-card lift-hover group relative overflow-hidden rounded-2xl border border-white/[0.06] p-7 sm:p-8">
+                      <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/[0.02] to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
+                      <div className="relative">
+                        {/* Step number */}
+                        <div className="mb-5 flex items-center gap-3">
+                          <span className="text-4xl font-extrabold text-zinc-800/80 group-hover:text-emerald-500/20 transition-colors duration-500">{step.step}</span>
+                          <div className="h-px flex-1 bg-gradient-to-r from-zinc-800/60 to-transparent" />
+                        </div>
+                        {/* Icon */}
+                        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500/20 to-teal-500/10 ring-1 ring-emerald-500/10 transition-all duration-300 group-hover:shadow-lg group-hover:shadow-emerald-500/10 group-hover:scale-105">
+                          <Icon className="h-5 w-5 text-emerald-400" />
+                        </div>
+                        <h3 className="mb-2 text-lg font-bold tracking-tight text-zinc-100">
+                          {step.title}
+                        </h3>
+                        <p className="text-sm leading-relaxed text-zinc-400 group-hover:text-zinc-300 transition-colors duration-300">
+                          {step.description}
+                        </p>
+                      </div>
+                    </div>
+                  </AnimatedSection>
+                );
+              })}
             </div>
+
+            {/* Connecting line visual */}
+            <AnimatedSection delay={0.3} className="mt-8 text-center">
+              <div className="inline-flex items-center gap-2 text-sm text-zinc-500">
+                <span>That&apos;s it. No step 4.</span>
+                <ArrowRight className="h-3.5 w-3.5 text-emerald-500/50" />
+                <button
+                  type="button"
+                  className="cursor-pointer text-emerald-400 hover:text-emerald-300 transition-colors font-medium"
+                  onClick={() => scrollToSection('auth-section')}
+                >
+                  Start now
+                </button>
+              </div>
+            </AnimatedSection>
           </div>
         </section>
 
-        {/* ═════════════════ 3. FEATURES ═════════════════ */}
+        {/* ═════════════════ 3. FEATURES (Outcome-based) ═════════════════ */}
         <section id="features-section" className="border-t border-zinc-800/20 px-4 py-20 sm:px-6 lg:py-28">
           <div className="mx-auto max-w-7xl lg:px-8">
             <AnimatedSection className="mb-14 text-center">
               <Badge className="mb-4 cursor-default gap-2 rounded-full border-emerald-500/20 bg-emerald-500/[0.07] px-3.5 py-1.5 text-xs font-semibold uppercase tracking-widest text-emerald-400 ring-1 ring-emerald-500/10">
                 <Target className="h-3.5 w-3.5" />
-                Features
+                Transformations
               </Badge>
               <h2 className="mb-4 text-3xl font-extrabold tracking-tight text-zinc-100 sm:text-4xl lg:text-5xl">
-                Everything you need to{' '}
-                <span className="gradient-text">stay focused</span>
+                What changes when you{' '}
+                <span className="gradient-text">take control</span>
               </h2>
               <p className="mx-auto max-w-xl text-base leading-relaxed text-zinc-400">
-                A complete system designed for deep work. Every feature exists to protect and amplify your attention.
+                These aren&apos;t features. They&apos;re the outcomes you&apos;ve been looking for.
               </p>
             </AnimatedSection>
 
@@ -465,18 +531,25 @@ export function LandingPage() {
               {features.map((feature, i) => {
                 const Icon = feature.icon;
                 return (
-                  <AnimatedSection key={feature.title} delay={i * 0.04}>
+                  <AnimatedSection key={feature.title} delay={i * 0.05}>
                     <Card className="card-glow glass-card lift-hover group relative h-full cursor-default overflow-hidden border-zinc-800/30 p-6 backdrop-blur-sm transition-all duration-300 sm:p-7">
-                      <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/[0.03] to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-                      <div className="relative mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500/20 to-teal-500/10 ring-1 ring-emerald-500/10 transition-all duration-300 group-hover:shadow-lg group-hover:shadow-emerald-500/10 group-hover:scale-105">
-                        <Icon className="h-5 w-5 text-emerald-400" />
+                      <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/[0.03] to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
+                      <div className="relative">
+                        <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500/20 to-teal-500/10 ring-1 ring-emerald-500/10 transition-all duration-300 group-hover:shadow-lg group-hover:shadow-emerald-500/10 group-hover:scale-105">
+                          <Icon className="h-5 w-5 text-emerald-400" />
+                        </div>
+                        <h3 className="relative mb-2 text-base font-bold tracking-tight text-zinc-100 leading-snug">
+                          {feature.title}
+                        </h3>
+                        <p className="relative text-sm leading-relaxed text-zinc-400 group-hover:text-zinc-300 transition-colors duration-300">
+                          {feature.description}
+                        </p>
+                        <div className="mt-4 pt-3 border-t border-zinc-800/30">
+                          <span className="text-[10px] uppercase tracking-wider font-semibold text-emerald-500/60 group-hover:text-emerald-400/80 transition-colors duration-300">
+                            {feature.outcome}
+                          </span>
+                        </div>
                       </div>
-                      <h3 className="relative mb-2 text-base font-bold tracking-tight text-zinc-100">
-                        {feature.title}
-                      </h3>
-                      <p className="relative text-sm leading-relaxed text-zinc-400 group-hover:text-zinc-300">
-                        {feature.description}
-                      </p>
                     </Card>
                   </AnimatedSection>
                 );
@@ -485,7 +558,86 @@ export function LandingPage() {
           </div>
         </section>
 
-        {/* ═════════════════ 4. TESTIMONIALS ═════════════════ */}
+        {/* ═════════════════ 4. PRODUCT PHILOSOPHY ═════════════════ */}
+        <section className="border-t border-zinc-800/20 px-4 py-20 sm:px-6 lg:py-28">
+          <div className="mx-auto max-w-7xl lg:px-8">
+            <div className="flex flex-col items-center gap-16 lg:flex-row lg:gap-20 lg:items-center">
+              {/* ── Left: Philosophy ── */}
+              <AnimatedSection className="flex-1 text-center lg:text-left lg:max-w-[540px]">
+                <Badge className="mb-4 cursor-default gap-2 rounded-full border-emerald-500/20 bg-emerald-500/[0.07] px-3.5 py-1.5 text-xs font-semibold uppercase tracking-widest text-emerald-400 ring-1 ring-emerald-500/10">
+                  <Cpu className="h-3.5 w-3.5" />
+                  Why This Is Different
+                </Badge>
+                <h2 className="mb-5 text-3xl font-extrabold tracking-tight text-zinc-100 sm:text-4xl lg:text-[2.8rem]">
+                  Other apps give you{' '}
+                  <span className="gradient-text">more tools.</span>
+                  <br />
+                  We give you{' '}
+                  <span className="text-zinc-200">more focus.</span>
+                </h2>
+                <p className="mb-6 text-base leading-relaxed text-zinc-400">
+                  Most productivity apps add features. More integrations. More dashboards. More things to check. MindGuard does the opposite — it removes everything that doesn&apos;t serve your focus.
+                </p>
+                <div className="space-y-4">
+                  {[
+                    { label: 'One mission, not a to-do list', desc: 'Force prioritization through constraint' },
+                    { label: 'AI that coaches, not just tracks', desc: 'Get specific, actionable guidance' },
+                    { label: 'Reflection built into the flow', desc: 'Not optional — automatic and effortless' },
+                  ].map((item) => (
+                    <div key={item.label} className="flex items-start gap-3 justify-center lg:justify-start">
+                      <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 ring-1 ring-emerald-500/15 mt-0.5">
+                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
+                      </div>
+                      <div>
+                        <span className="text-sm font-semibold text-zinc-200">{item.label}</span>
+                        <span className="text-xs text-zinc-500 ml-2">— {item.desc}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </AnimatedSection>
+
+              {/* ── Right: Comparison visual ── */}
+              <AnimatedSection className="w-full max-w-md lg:max-w-[440px] lg:w-[440px]">
+                <div className="space-y-4">
+                  {/* Other apps */}
+                  <div className="glass-card rounded-2xl overflow-hidden border border-white/[0.06] p-5 opacity-60">
+                    <div className="flex items-center gap-2 mb-3">
+                      <div className="h-2 w-2 rounded-full bg-red-500/50" />
+                      <span className="text-xs font-medium text-zinc-500">Typical Productivity App</span>
+                    </div>
+                    <div className="space-y-2">
+                      {['10 to-do lists', '5 integrations', '3 dashboards', '12 notifications/hr', 'Inbox zero anxiety'].map((item) => (
+                        <div key={item} className="flex items-center gap-2 text-xs text-zinc-600">
+                          <span className="text-red-500/40">✕</span>
+                          {item}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* MindGuard */}
+                  <div className="glass-card-active rounded-2xl overflow-hidden border border-emerald-500/20 p-5">
+                    <div className="flex items-center gap-2 mb-3">
+                      <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                      <span className="text-xs font-medium text-emerald-400">MindGuard</span>
+                    </div>
+                    <div className="space-y-2">
+                      {['One mission', 'AI coaching', 'Deep focus timer', 'Automatic reflection', 'Zero distractions'].map((item) => (
+                        <div key={item} className="flex items-center gap-2 text-xs text-zinc-300">
+                          <CheckCircle2 className="h-3 w-3 text-emerald-400" />
+                          {item}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </AnimatedSection>
+            </div>
+          </div>
+        </section>
+
+        {/* ═════════════════ 5. TESTIMONIALS ═════════════════ */}
         <section id="testimonials-section" className="border-t border-zinc-800/20 px-4 py-20 sm:px-6 lg:py-28">
           <div className="mx-auto max-w-7xl lg:px-8">
             <AnimatedSection className="mb-14 text-center">
@@ -508,7 +660,7 @@ export function LandingPage() {
           </div>
         </section>
 
-        {/* ═════════════════ 5. PRICING ═════════════════ */}
+        {/* ═════════════════ 6. PRICING ═════════════════ */}
         <section id="pricing-section" className="border-t border-zinc-800/20 px-4 py-20 sm:px-6 lg:py-28">
           <div className="mx-auto max-w-6xl lg:px-8">
             <AnimatedSection className="mb-14 text-center">
@@ -527,11 +679,11 @@ export function LandingPage() {
 
             <div className="grid gap-5 md:grid-cols-3">
               {pricingTiers.map((tier, i) => (
-                <AnimatedSection key={tier.name} delay={i * 0.06}>
+                <AnimatedSection key={tier.name} delay={i * 0.08}>
                   <Card className={cn(
-                    'relative overflow-hidden h-full backdrop-blur-sm',
+                    'relative overflow-hidden h-full backdrop-blur-sm transition-all duration-300',
                     tier.highlighted
-                      ? 'glass-card-active lift-hover border-emerald-500/20 ring-1 ring-emerald-500/10'
+                      ? 'glass-card-active lift-hover border-emerald-500/20 ring-1 ring-emerald-500/10 hover:shadow-xl hover:shadow-emerald-500/10'
                       : 'glass-card lift-hover border-zinc-800/30',
                   )}>
                     {tier.highlighted && (
@@ -566,10 +718,10 @@ export function LandingPage() {
                       </ul>
                       <Button
                         className={cn(
-                          'w-full rounded-xl h-10 text-sm font-semibold transition-all cursor-pointer',
+                          'w-full rounded-xl h-11 text-sm font-semibold transition-all duration-300 cursor-pointer',
                           tier.highlighted
-                            ? 'bg-gradient-to-b from-emerald-500 to-emerald-600 text-white shadow-lg shadow-emerald-500/20 hover:from-emerald-400 hover:to-emerald-500 hover:shadow-xl'
-                            : 'bg-zinc-800/50 text-zinc-300 border border-zinc-700/30 shadow-none hover:bg-zinc-800/70 hover:text-zinc-200',
+                            ? 'bg-gradient-to-b from-emerald-500 to-emerald-600 text-white shadow-lg shadow-emerald-500/20 hover:from-emerald-400 hover:to-emerald-500 hover:shadow-xl hover:shadow-emerald-500/25 hover:scale-[1.02] active:scale-[0.98]'
+                            : 'bg-zinc-800/50 text-zinc-300 border border-zinc-700/30 shadow-none hover:bg-zinc-800/70 hover:text-zinc-200 hover:scale-[1.01] active:scale-[0.99]',
                         )}
                         onClick={() => scrollToSection('auth-section')}
                       >
@@ -584,7 +736,7 @@ export function LandingPage() {
           </div>
         </section>
 
-        {/* ═════════════════ 6. SECURITY ═════════════════ */}
+        {/* ═════════════════ 7. SECURITY ═════════════════ */}
         <section className="border-t border-zinc-800/20 px-4 py-20 sm:px-6 lg:py-28">
           <div className="mx-auto max-w-6xl lg:px-8">
             <AnimatedSection className="mb-14 text-center">
@@ -611,10 +763,10 @@ export function LandingPage() {
                       initial={{ opacity: 0, y: 14 }}
                       whileInView={{ opacity: 1, y: 0 }}
                       viewport={{ once: true }}
-                      transition={{ duration: 0.35, delay: i * 0.06 }}
+                      transition={{ duration: 0.4, delay: i * 0.06, ease: APPLE_EASE }}
                     >
-                      <div className="glass-card rounded-xl p-5 text-center lift-hover">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500/20 to-teal-500/10 ring-1 ring-emerald-500/10 mx-auto mb-3">
+                      <div className="glass-card lift-hover rounded-xl p-5 text-center group">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500/20 to-teal-500/10 ring-1 ring-emerald-500/10 mx-auto mb-3 transition-all duration-300 group-hover:shadow-lg group-hover:shadow-emerald-500/10 group-hover:scale-105">
                           <Icon className="h-5 w-5 text-emerald-400" />
                         </div>
                         <h3 className="text-sm font-bold text-zinc-100 mb-1">{item.title}</h3>
@@ -628,7 +780,7 @@ export function LandingPage() {
           </div>
         </section>
 
-        {/* ═════════════════ 7. FAQ ═════════════════ */}
+        {/* ═════════════════ 8. FAQ ═════════════════ */}
         <section id="faq-section" className="border-t border-zinc-800/20 px-4 py-20 sm:px-6 lg:py-28">
           <div className="mx-auto max-w-3xl lg:px-8">
             <AnimatedSection className="mb-14 text-center">
@@ -643,7 +795,7 @@ export function LandingPage() {
             </AnimatedSection>
 
             <AnimatedSection>
-              <Accordion type="single" collapsible className="glass-card rounded-xl overflow-hidden border-zinc-800/30">
+              <Accordion type="single" collapsible className="glass-card rounded-2xl overflow-hidden border-zinc-800/30">
                 {faqItems.map((item, i) => (
                   <AccordionItem
                     key={i}
@@ -653,7 +805,7 @@ export function LandingPage() {
                       i === faqItems.length - 1 && 'border-b-0'
                     )}
                   >
-                    <AccordionTrigger className="text-sm font-semibold text-zinc-200 hover:text-emerald-400 hover:no-underline py-4 cursor-pointer">
+                    <AccordionTrigger className="text-sm font-semibold text-zinc-200 hover:text-emerald-400 hover:no-underline py-4 cursor-pointer transition-colors duration-200">
                       {item.question}
                     </AccordionTrigger>
                     <AccordionContent className="text-sm text-zinc-400 leading-relaxed pb-4">
@@ -666,43 +818,74 @@ export function LandingPage() {
           </div>
         </section>
 
-        {/* ═════════════════ 8. FINAL CTA ═════════════════ */}
+        {/* ═════════════════ 9. AUTH SECTION ═════════════════ */}
+        <section id="auth-section" className="border-t border-zinc-800/20 px-4 py-20 sm:px-6 lg:py-28">
+          <div className="mx-auto max-w-7xl lg:px-8">
+            <div className="flex flex-col items-center gap-14 lg:flex-row lg:gap-16 lg:items-center">
+              {/* ── Left: Sign-up prompt ── */}
+              <AnimatedSection className="flex-1 text-center lg:text-left lg:max-w-[480px]">
+                <MindGuardHeroLogo className="mx-auto lg:mx-0 mb-6" />
+                <h2 className="mb-4 text-3xl font-extrabold tracking-tight text-zinc-100 sm:text-4xl">
+                  Ready to meet your{' '}
+                  <span className="gradient-text">coach?</span>
+                </h2>
+                <p className="mb-6 text-base leading-relaxed text-zinc-400">
+                  Join 10,000+ focused professionals. Free forever. No credit card. Start in 30 seconds.
+                </p>
+                <div className="space-y-3">
+                  {[
+                    { icon: Zap, text: 'Set up in 30 seconds' },
+                    { icon: Shield, text: 'No credit card required' },
+                    { icon: CheckCircle2, text: 'Free forever — no trial expiration' },
+                  ].map(({ icon: FeatureIcon, text }) => (
+                    <div key={text} className="flex items-center gap-3 justify-center lg:justify-start">
+                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-500/[0.08] ring-1 ring-emerald-500/10">
+                        <FeatureIcon className="h-3.5 w-3.5 text-emerald-400" />
+                      </div>
+                      <span className="text-sm text-zinc-300">{text}</span>
+                    </div>
+                  ))}
+                </div>
+              </AnimatedSection>
+
+              {/* ── Right: Auth Form ── */}
+              <AnimatedSection className="w-full max-w-[420px] lg:w-[420px]">
+                <AuthExperience onSuccess={handleAuthSuccess} />
+              </AnimatedSection>
+            </div>
+          </div>
+        </section>
+
+        {/* ═════════════════ 10. FINAL CTA ═════════════════ */}
         <section className="px-4 py-20 sm:px-6 lg:py-28">
           <div className="mx-auto max-w-5xl lg:px-8">
             <AnimatedSection>
               <div className="relative overflow-hidden rounded-2xl border border-zinc-800/30 bg-gradient-to-br from-emerald-950/40 via-zinc-900/60 to-teal-950/30 px-8 py-16 text-center backdrop-blur-md sm:px-12 sm:py-20 lg:px-16">
                 {/* Decorative glows */}
-                <div className="pointer-events-none absolute left-1/2 top-0 h-[350px] w-[350px] -translate-x-1/2 -translate-y-[30%] rounded-full bg-emerald-500/[0.10] blur-[80px]" />
+                <div className="pointer-events-none absolute left-1/2 top-0 h-[400px] w-[400px] -translate-x-1/2 -translate-y-[30%] rounded-full bg-emerald-500/[0.10] blur-[80px]" />
                 <div className="pointer-events-none absolute bottom-0 right-0 h-48 w-48 translate-x-1/4 translate-y-1/4 rounded-full bg-teal-500/[0.05] blur-[60px]" />
 
                 <div className="relative z-10">
                   <MindGuardHeroLogo className="mx-auto mb-6" />
-                  <h2 className="mb-4 text-2xl font-extrabold tracking-tight text-zinc-100 sm:text-4xl lg:text-[3.25rem]">
-                    Ready to meet your{' '}
-                    <span className="gradient-text">coach?</span>
+                  <h2 className="mb-4 text-3xl font-extrabold tracking-tight text-zinc-100 sm:text-4xl lg:text-[3.5rem] leading-[1.05]">
+                    Stop managing your time.
+                    <br />
+                    <span className="gradient-text">Start mastering your focus.</span>
                   </h2>
-                  <p className="mx-auto mb-8 max-w-md text-base leading-relaxed text-zinc-400">
+                  <p className="mx-auto mb-8 max-w-md text-base leading-relaxed text-zinc-300">
                     Join 10,000+ focused professionals. Free forever. No credit card. Start in 30 seconds.
                   </p>
-                  <div className="flex flex-col gap-3 sm:flex-row sm:gap-4 justify-center">
+                  <div className="flex flex-col items-center gap-3 sm:flex-row sm:gap-4 justify-center">
                     <Button
                       size="lg"
-                      className="pulse-glow cursor-pointer group h-12 rounded-xl bg-gradient-to-b from-emerald-500 to-emerald-600 px-8 text-base font-semibold text-white shadow-xl shadow-emerald-500/25 transition-all hover:from-emerald-400 hover:to-emerald-500 hover:shadow-2xl hover:shadow-emerald-500/30"
+                      className="cta-primary cursor-pointer group h-13 rounded-xl bg-gradient-to-b from-emerald-500 to-emerald-600 px-8 text-base font-semibold text-white shadow-xl shadow-emerald-500/25 transition-all duration-300 hover:from-emerald-400 hover:to-emerald-500 hover:shadow-2xl hover:shadow-emerald-500/30 hover:scale-[1.02] active:scale-[0.98]"
                       onClick={() => scrollToSection('auth-section')}
                     >
-                      Let&apos;s get started
-                      <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="lg"
-                      className="cursor-pointer h-12 rounded-xl border-zinc-700/30 bg-zinc-900/40 px-8 text-base font-medium text-zinc-300 hover:text-zinc-100 hover:bg-zinc-800/40 hover:border-zinc-600/30 shadow-none"
-                      onClick={() => scrollToSection('demo-section')}
-                    >
-                      See how it works
+                      Meet your coach
+                      <ArrowRight className="ml-2 h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
                     </Button>
                   </div>
-                  <p className="mt-4 text-sm text-zinc-500">
+                  <p className="mt-4 text-xs text-zinc-600">
                     Free forever · No credit card · Set up in 30 seconds
                   </p>
                 </div>
@@ -711,7 +894,7 @@ export function LandingPage() {
           </div>
         </section>
 
-        {/* ═════════════════ 9. FOOTER ═════════════════ */}
+        {/* ═════════════════ 11. FOOTER ═════════════════ */}
         <footer className="mt-auto border-t border-zinc-800/20 px-4 py-10 sm:px-6">
           <div className="mx-auto max-w-7xl lg:px-8">
             <div className="flex flex-col items-center gap-5 sm:flex-row sm:justify-between">
@@ -728,7 +911,7 @@ export function LandingPage() {
                   <button
                     key={link.label}
                     type="button"
-                    className="cursor-pointer text-xs text-zinc-500 transition-colors hover:text-zinc-300"
+                    className="cursor-pointer text-xs text-zinc-500 transition-colors duration-200 hover:text-zinc-300"
                     onClick={() => scrollToSection(link.id)}
                   >
                     {link.label}
