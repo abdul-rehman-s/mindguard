@@ -1,36 +1,30 @@
 ---
 Task ID: 1
-Agent: main
-Task: Fix authentication flow bug, premium auth experience, and navigation animation
+Agent: Main Agent
+Task: Premium UX Polish Pass (Phase 2.3) — Fix auth freeze bug, premium auth card, onboarding redesign, transitions
 
 Work Log:
-- Investigated the complete auth flow: Landing → Sign Up → API → Session → Zustand → NextAuth → Router → Success Overlay → Navigation → Onboarding
-- Identified ROOT CAUSE of the "stuck forever after success screen" bug: THREE interlocking bugs
-  1. `handleAuthSuccess` in landing-page.tsx was a NO-OP (empty function)
-  2. `useSession()` never detected the new session after `signIn('credentials', { redirect: false })` because SessionProvider had no `refetchInterval`
-  3. The success overlay was a visual dead end with no timeout, navigation, or session refresh
-- ADDITIONAL BUG FOUND: `isLanding` condition in page.tsx was `currentView === 'landing' || status === 'unauthenticated'` — this meant even authenticated users with `currentView === 'landing'` still saw the landing page
-- Fixed sign-up-form.tsx: Import `getSession` from next-auth/react, call `await getSession()` after 1.2s delay to force session refresh
-- Fixed sign-in-form.tsx: Same fix — import `getSession`, call after 1.2s delay
-- Fixed auth-provider.tsx: Added `refetchInterval={5 * 60}` and `refetchOnWindowFocus={true}` as safety net
-- Fixed page.tsx: Changed `isLanding` condition from `currentView === 'landing' || status === 'unauthenticated'` to `status === 'unauthenticated'` only — authenticated users always see onboarding or dashboard
-- Added premium AnimatePresence transitions between landing, onboarding, and dashboard views
-- Upgraded AuthCard from 420px to 560px with larger padding, better glass effect, richer shadows
-- Upgraded AuthSuccessOverlay with larger checkmark icon, more confetti particles, bigger text
-- Upgraded AuthHeader with larger typography (2rem), better spacing
-- Upgraded StepIndicator with larger dots and wider active state
-- Upgraded AuthField with larger inputs (h-[60px] vs h-14), larger floating labels
-- Upgraded AuthButton and StepButton with taller buttons (h-[56px] vs h-[52px])
-- Upgraded OAuth buttons with more padding (py-3.5 vs py-2.5)
-- Updated forgot-password-form.tsx and email-verification.tsx to match new 560px width
-- Fixed TypeScript errors with `ease` type by adding `as [number, number, number, number]` assertions
-- Verified all auth flows in browser: new user signup, existing user signin, invalid password
+- Explored entire codebase structure and identified all auth/onboarding files
+- Root cause analysis: AuthSuccessOverlay was a full-screen z-50 overlay that blocked all interaction for 1200ms via setTimeout
+- Fixed sign-up-form.tsx: Removed AuthSuccessOverlay, added success state on button, immediate getSession() + 400ms brief delay
+- Fixed sign-in-form.tsx: Same changes as sign-up form
+- Updated auth-button.tsx: Added success prop with green checkmark animation, increased height from 56px to 60px
+- Updated auth-field.tsx: Increased input height from 60px to 64px
+- Updated auth-shared.tsx: Increased AuthCard width from 560px to 600px, padding from p-8/p-10 to p-10/p-12
+- Updated email-verification.tsx: Width to 600px
+- Updated forgot-password-form.tsx: Width to 600px
+- Updated landing-page.tsx: Auth section width to 600px
+- Updated page.tsx: Added blur filter to page transitions (blur(8px) on exit, blur(6px) on enter)
+- Redesigned onboarding-flow.tsx: 800px width, premium card container with glass effect, journey progress bar with step icons and percentage, improved visual hierarchy
+- Browser verified: Signup flow, Login flow, Forgot password flow, Onboarding flow
+- Lint passes, no TS errors in modified files
+- Committed and pushed to GitHub
 
 Stage Summary:
-- Root cause: Three interlocking bugs (empty handleAuthSuccess, no session refresh, isLanding condition)
-- Fix: Added getSession() call after auth success, fixed isLanding condition, added refetchInterval
-- Premium auth experience: 560px card, larger inputs/buttons/typography, better spacing
-- Navigation animation: AnimatePresence with scale+fade transitions between views
-- All auth paths verified: new user, existing user, invalid password
-- Lint: 0 errors, 1 pre-existing warning
-- TypeScript: 0 errors in changed files
+- Root cause of auth freeze: AuthSuccessOverlay + 1200ms setTimeout blocking all interaction
+- Fix: Removed overlay, added brief success state on button, immediate session refresh
+- Auth card: 600px width, more padding, larger inputs/buttons
+- Onboarding: 800px width, premium card container, journey progress bar
+- Transitions: Added blur filter to page transitions
+- Commit: 1ebb0c22a716d947b5b5c6c7922b295d61e8a207
+- Pushed to main branch
