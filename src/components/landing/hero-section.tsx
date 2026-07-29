@@ -505,36 +505,19 @@ export function HeroSection({ onAuthSuccess }: HeroSectionProps) {
               transition={{ duration: 0.7, ease: CINEMATIC_EASE }}
               className="flex flex-col items-center"
             >
-              {/* ── The Breathing Orb — Product emerges from darkness ── */}
-              <motion.div
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 1.5, ease: CINEMATIC_EASE, delay: 0.2 }}
-                className="relative mb-8 flex items-center justify-center"
-              >
-                <BreathingOrb size="large" />
-
-                {/* Floating product cards around the orb */}
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="relative w-[540px] max-w-full">
-                    <HeroProductVisualization />
-                  </div>
-                </div>
-              </motion.div>
-
-              {/* ── The Headline ── */}
+              {/* ── The Headline — appears first, creates curiosity ── */}
               <motion.div
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 1, ease: CINEMATIC_EASE, delay: 0.5 }}
-                className="text-center max-w-3xl mx-auto"
+                transition={{ duration: 1, ease: CINEMATIC_EASE, delay: 0.3 }}
+                className="text-center max-w-4xl mx-auto mb-12"
               >
                 {/* Announcement badge */}
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.6, ease: APPLE_EASE, delay: 0.6 }}
-                  className="mb-6"
+                  transition={{ duration: 0.6, ease: APPLE_EASE, delay: 0.4 }}
+                  className="mb-8"
                 >
                   <Badge className="cursor-default gap-2 rounded-full border-emerald-500/20 bg-emerald-500/[0.07] px-4 py-2 text-xs font-medium text-emerald-400 ring-1 ring-emerald-500/10">
                     <span className="relative flex h-1.5 w-1.5">
@@ -549,8 +532,8 @@ export function HeroSection({ onAuthSuccess }: HeroSectionProps) {
                 <motion.h1
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.8, ease: CINEMATIC_EASE, delay: 0.7 }}
-                  className="mb-6 text-[2.5rem] font-black leading-[1.05] tracking-tight text-zinc-50 sm:text-[3.75rem] lg:text-[5rem]"
+                  transition={{ duration: 0.8, ease: CINEMATIC_EASE, delay: 0.5 }}
+                  className="mb-6 text-[2.5rem] font-black leading-[1.05] tracking-tight text-zinc-50 sm:text-[3.75rem] lg:text-[5.5rem]"
                 >
                   Your focus deserves{' '}
                   <span className="gradient-text">a coach.</span>
@@ -562,7 +545,7 @@ export function HeroSection({ onAuthSuccess }: HeroSectionProps) {
                 <motion.p
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.8, ease: CINEMATIC_EASE, delay: 0.8 }}
+                  transition={{ duration: 0.8, ease: CINEMATIC_EASE, delay: 0.6 }}
                   className="mb-10 text-lg leading-[1.8] text-zinc-400 sm:text-xl max-w-2xl mx-auto"
                 >
                   MindGuard learns how you work, what breaks your focus, and when you&apos;re at your best — then coaches you to do more of what works.
@@ -572,7 +555,7 @@ export function HeroSection({ onAuthSuccess }: HeroSectionProps) {
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.8, ease: CINEMATIC_EASE, delay: 0.9 }}
+                  transition={{ duration: 0.8, ease: CINEMATIC_EASE, delay: 0.7 }}
                   className="flex flex-col items-center gap-4 sm:flex-row sm:gap-5 justify-center"
                 >
                   <Button
@@ -597,7 +580,7 @@ export function HeroSection({ onAuthSuccess }: HeroSectionProps) {
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  transition={{ duration: 0.8, ease: CINEMATIC_EASE, delay: 1.1 }}
+                  transition={{ duration: 0.8, ease: CINEMATIC_EASE, delay: 0.9 }}
                   className="flex items-center gap-3 mt-6 justify-center flex-wrap"
                 >
                   <div className="flex items-center gap-1">
@@ -611,6 +594,23 @@ export function HeroSection({ onAuthSuccess }: HeroSectionProps) {
                   <span className="text-zinc-700">·</span>
                   <span className="text-xs text-zinc-500">Free forever</span>
                 </motion.div>
+              </motion.div>
+
+              {/* ── The Product — emerges from the orb's glow ── */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9, y: 40 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                transition={{ duration: 1.5, ease: CINEMATIC_EASE, delay: 0.8 }}
+                className="relative flex items-center justify-center w-full max-w-3xl mx-auto"
+              >
+                <BreathingOrb size="large" />
+
+                {/* Floating product cards emerge from the orb */}
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="relative w-[580px] max-w-full">
+                    <HeroProductVisualization />
+                  </div>
+                </div>
               </motion.div>
             </motion.div>
           ) : (
