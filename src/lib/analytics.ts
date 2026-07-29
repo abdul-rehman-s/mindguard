@@ -62,6 +62,71 @@ export function calculateFocusScore(
 }
 
 /**
+ * Smart Focus Score — weighted average of multiple factors.
+ * Scale: 0-100
+ * Formula:
+ *   - focusMinutes / focusGoalMinutes (40% weight)
+ *   - completedSessions / plannedSessions (20% weight)
+ *   - streakLength / 7 (15% weight)
+ *   - mood average / 5 (10% weight)
+ *   - reflectionRate (15% weight)
+ */
+export function calculateSmartFocusScore(data: {
+  focusMinutes: number;
+  focusGoalMinutes: number;
+  completedSessions: number;
+  plannedSessions: number;
+  streakLength: number;
+  moodAverage: number;    // 1-5 or 0 if no data
+  reflectionRate: number; // 0-1, fraction of days with reflections
+}): number {
+  const {
+    focusMinutes,
+    focusGoalMinutes,
+    completedSessions,
+    plannedSessions,
+    streakLength,
+    moodAverage,
+    reflectionRate,
+  } = data;
+
+  // Focus time ratio (capped at 1.0)
+  const focusRatio = focusGoalMinutes > 0 ? Math.min(focusMinutes / focusGoalMinutes, 1) : 0;
+
+  // Session completion ratio
+  const sessionRatio = plannedSessions > 0 ? Math.min(completedSessions / plannedSessions, 1) : completedSessions > 0 ? 1 : 0;
+
+  // Streak ratio (max 7 days = 1.0)
+  const streakRatio = Math.min(streakLength / 7, 1);
+
+  // Mood ratio (1-5 scale)
+  const moodRatio = moodAverage > 0 ? moodAverage / 5 : 0.5; // default to 0.5 if no mood data
+
+  // Reflection rate (0-1)
+  const reflectionRatio = Math.min(reflectionRate, 1);
+
+  const score = Math.round(
+    focusRatio * 40 +
+    sessionRatio * 20 +
+    streakRatio * 15 +
+    moodRatio * 10 +
+    reflectionRatio * 15
+  );
+
+  return Math.max(0, Math.min(100, score));
+}
+
+/**
+ * Get focus score color class based on score.
+ */
+export function getFocusScoreColor(score: number): { bg: string; text: string; label: string } {
+  if (score >= 80) return { bg: 'bg-emerald-500/15', text: 'text-emerald-400', label: 'Excellent' };
+  if (score >= 60) return { bg: 'bg-green-500/15', text: 'text-green-400', label: 'Good' };
+  if (score >= 40) return { bg: 'bg-amber-500/15', text: 'text-amber-400', label: 'Fair' };
+  return { bg: 'bg-red-500/15', text: 'text-red-400', label: 'Needs Work' };
+}
+
+/**
  * Shared attention grade from a score (0-100).
  * Used by /api/weekly-wrapped.
  */

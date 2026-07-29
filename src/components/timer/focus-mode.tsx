@@ -41,7 +41,7 @@ export function FocusMode({ duration: initialDuration, missionTitle, onExit }: F
   const activeMission = useAppStore(s => s.activeMission);
 
   // ── Display state (drives UI only) ──
-  const [, setTick] = useState(0);
+  const [tick, setTick] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
   const [celebrationData, setCelebrationData] = useState<{ duration: number; mission: string | null }>({ duration: 0, mission: null });
@@ -130,7 +130,7 @@ export function FocusMode({ duration: initialDuration, missionTitle, onExit }: F
       setIsPaused(true);
       stopInterval();
     }
-  }, [isPaused, startInterval, stopInterval]);
+  }, [isPaused, getElapsedSeconds, startInterval, stopInterval]);
 
   // ── Save session ──
   const saveAndFinishRef = useRef<(showCeleb: boolean, forcedElapsed?: number) => Promise<void>>(
@@ -176,7 +176,7 @@ export function FocusMode({ duration: initialDuration, missionTitle, onExit }: F
         toast.success(`Session saved — ${formatDuration(realElapsed)}`);
         onExitRef.current();
       }
-    } catch {
+    } catch (err) {
       toast.error('Failed to save session');
       onExitRef.current();
     } finally {
@@ -192,7 +192,7 @@ export function FocusMode({ duration: initialDuration, missionTitle, onExit }: F
   const handleStop = useCallback(() => {
     if (savingRef.current) return; // Guard: don't allow stop if already saving
     saveAndFinish(false);
-  }, [saveAndFinish]);
+  }, [getElapsedSeconds, saveAndFinish]);
 
   // ── Keyboard: ESC to stop ──
   useEffect(() => {

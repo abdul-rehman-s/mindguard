@@ -1,9 +1,9 @@
 'use client';
 
-import { motion, type Variants } from 'framer-motion';
+import { motion } from 'framer-motion';
 import type { ReactNode } from 'react';
 
-const container: Variants = {
+const container = {
   hidden: { opacity: 0 },
   show: {
     opacity: 1,
@@ -11,7 +11,7 @@ const container: Variants = {
   },
 };
 
-const item: Variants = {
+const item = {
   hidden: { opacity: 0, y: 12 },
   show: {
     opacity: 1,

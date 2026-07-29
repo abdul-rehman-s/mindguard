@@ -1,89 +1,53 @@
 {
   "name": "mindguard-desktop",
-  "version": "1.0.0",
-  "description": "MindGuard AI Desktop Companion — Production-grade activity tracking, focus detection, and productivity analytics",
-  "main": "dist/main.js",
-  "author": "Abdul Rehman <abdulrehmansudais824@gmail.com>",
-  "license": "MIT",
+  "version": "4.2.0",
+  "description": "MindGuard Desktop Agent — Real-time activity tracking and focus protection",
+  "main": "src/main.js",
   "scripts": {
-      "dev": "tsc && electron .",
-      "build": "tsc",
-      "watch": "tsc --watch",
-      "pack": "node scripts/build-prod.js --win --dir",
-      "dist": "node scripts/build-prod.js --win",
-      "dist:portable": "electron-builder --win portable",
-      "postinstall": "node scripts/rebuild-native.js"
-    },
+    "dev": "electron .",
+    "build": "electron-builder",
+    "build:mac": "electron-builder --mac",
+    "build:win": "electron-builder --win",
+    "build:linux": "electron-builder --linux",
+    "lint": "eslint src/"
+  },
   "dependencies": {
     "active-win": "^8.1.0",
-    "better-sqlite3": "^11.7.0",
+    "electron-store": "^10.0.0",
     "electron-is-dev": "^3.0.1",
-    "electron-updater": "^6.3.0",
-    "ws": "^8.18.0"
+    "node-idle-time": "^1.0.0"
   },
   "devDependencies": {
-    "electron": "^33.2.0",
-    "electron-builder": "^25.1.8",
-    "@types/better-sqlite3": "^7.6.12",
-    "@types/ws": "^8.5.12",
-    "typescript": "^5.7.0"
-  },
-  "overrides": {
-    "node-gyp": "13.0.1"
+    "electron": "^33.0.0",
+    "electron-builder": "^25.1.8"
   },
   "build": {
-    "appId": "com.abdulrehman.mindguard",
-    "productName": "MindGuard",
-    "copyright": "Copyright © 2025 Abdul Rehman",
-    "compression": "maximum",
+    "appId": "com.mindguard.desktop",
+    "productName": "MindGuard Desktop",
     "directories": {
-      "output": "dist-electron"
+      "output": "dist"
     },
     "files": [
-      "dist/**/*",
-      "assets/**/*",
-      "package.json"
+      "src/**/*",
+      "assets/**/*"
     ],
-    "win": {
-      "executableName": "MindGuard",
-      "target": [
-        "nsis",
-        "portable",
-        "zip"
-      ],
-      "icon": "assets/icon.ico",
-      "publisherName": "Abdul Rehman",
-      "verifyUpdateCodeSignature": false,
-      "artifactName": "MindGuard-v${version}-win.${ext}"
-    },
     "mac": {
-      "target": ["dmg"],
+      "category": "public.app-category.productivity",
       "icon": "assets/icon.icns"
     },
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.ico"
+    },
     "linux": {
-      "target": ["AppImage", "deb"],
+      "target": "AppImage",
       "icon": "assets/icon.png"
     },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
-      "createStartMenuShortcut": true,
-      "perMachine": false,
-      "installerIcon": "assets/icon.ico",
-      "uninstallerIcon": "assets/icon.ico",
-      "installerHeaderIcon": "assets/icon.ico",
-      "installerHeader": "assets/installer-banner.bmp",
-      "allowElevation": true,
-      "artifactName": "MindGuard-Setup-${version}.${ext}"
-    },
-    "portable": {
-      "artifactName": "MindGuard-Portable-${version}.${ext}"
-    },
-    "publish": {
-      "provider": "github",
-      "owner": "abdul-rehman-s",
-      "repo": "mindguard"
+      "createStartMenuShortcut": true
     }
   }
 }

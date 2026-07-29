@@ -126,7 +126,7 @@ export async function GET(request: NextRequest) {
         type: 'mission_completed',
         title: m.title,
         subtitle: 'Mission completed',
-        time: (m.completedAt || m.updatedAt).toISOString(),
+        time: (m.completedAt ?? m.updatedAt ?? new Date()).toISOString(),
         icon: 'CheckCircle2',
       });
     }

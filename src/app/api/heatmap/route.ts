@@ -21,7 +21,7 @@ export async function GET() {
 
     const dayMap = new Map<string, { minutes: number; sessions: number; mission?: string }>();
     for (const s of sessions) {
-      const dateStr = s.endedAt.toISOString().split('T')[0];
+      const dateStr = (s.endedAt ?? s.startedAt).toISOString().split('T')[0];
       const existing = dayMap.get(dateStr) || { minutes: 0, sessions: 0 };
       existing.minutes += Math.round(s.duration / 60);
       existing.sessions += 1;

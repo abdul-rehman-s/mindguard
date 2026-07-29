@@ -6,8 +6,8 @@ import { startOfDay, endOfDay, format } from "date-fns";
 import type { ActivityType, ActivityCategory, DesktopTimelineEntry } from "@/types";
 
 /** GET — Automatic timeline from desktop activity data */
-export async function GET(request: Request) {
-  const userIdOr401 = await getAuthUserId(request);
+export async function GET() {
+  const userIdOr401 = await getAuthUserId();
   if (userIdOr401 instanceof NextResponse) return userIdOr401;
   const userId = userIdOr401;
 

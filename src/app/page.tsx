@@ -1,29 +1,105 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { motion, AnimatePresence } from 'framer-motion';
+import dynamic from 'next/dynamic';
 import { useAppStore } from '@/stores/app-store';
-import { LandingPage } from '@/components/landing/landing-page';
-import { AppShell } from '@/components/app/app-shell';
-import { DashboardView } from '@/components/dashboard/dashboard-view';
-import { LifeDashboard } from '@/components/life/life-dashboard';
-import { MissionView } from '@/components/mission/mission-view';
-import { TimerView } from '@/components/timer/timer-view';
-import { ReflectionView } from '@/components/reflection/reflection-view';
-import { SessionHistoryView } from '@/components/sessions/session-history-view';
-import { StatsView } from '@/components/stats/stats-view';
-import { SettingsView } from '@/components/settings/settings-view';
-import { ReplayView } from '@/components/replay/replay-view';
-import { WrappedView } from '@/components/wrapped/wrapped-view';
-import { DailyReview } from '@/components/review/daily-review';
-import { OnboardingFlow } from '@/components/onboarding/onboarding-flow';
-import { FocusMode } from '@/components/timer/focus-mode';
-import { AssistantView } from '@/components/assistant/assistant-view';
+import { MindGuardSplashLogo } from '@/components/branding/mindguard-logo';
 import { Loader2 } from 'lucide-react';
 import { useMounted } from '@/hooks/use-mounted';
-import { useDesktopIntegration } from '@/hooks/use-desktop-integration';
-import { useWebsocketSync } from '@/hooks/use-websocket-sync';
+import { AppShell } from '@/components/app/app-shell';
+import { DashboardView } from '@/components/dashboard/dashboard-view';
+
+// ─── Lazy-loaded heavy components ───
+// Only loaded when the user navigates to these views, reducing initial bundle size
+
+const LandingPage = dynamic(
+  () => import('@/components/landing/landing-page').then(m => ({ default: m.LandingPage })),
+  { ssr: false }
+);
+
+const OnboardingFlow = dynamic(
+  () => import('@/components/onboarding/onboarding-flow').then(m => ({ default: m.OnboardingFlow })),
+  { ssr: false }
+);
+
+const FocusMode = dynamic(
+  () => import('@/components/timer/focus-mode').then(m => ({ default: m.FocusMode })),
+  { ssr: false }
+);
+
+const LifeDashboard = dynamic(
+  () => import('@/components/life/life-dashboard').then(m => ({ default: m.LifeDashboard })),
+  { ssr: false }
+);
+
+const MissionView = dynamic(
+  () => import('@/components/mission/mission-view').then(m => ({ default: m.MissionView })),
+  { ssr: false }
+);
+
+const TimerView = dynamic(
+  () => import('@/components/timer/timer-view').then(m => ({ default: m.TimerView })),
+  { ssr: false }
+);
+
+const ReflectionView = dynamic(
+  () => import('@/components/reflection/reflection-view').then(m => ({ default: m.ReflectionView })),
+  { ssr: false }
+);
+
+const SessionHistoryView = dynamic(
+  () => import('@/components/sessions/session-history-view').then(m => ({ default: m.SessionHistoryView })),
+  { ssr: false }
+);
+
+const StatsView = dynamic(
+  () => import('@/components/stats/stats-view').then(m => ({ default: m.StatsView })),
+  { ssr: false }
+);
+
+const SettingsView = dynamic(
+  () => import('@/components/settings/settings-view').then(m => ({ default: m.SettingsView })),
+  { ssr: false }
+);
+
+const ReplayView = dynamic(
+  () => import('@/components/replay/replay-view').then(m => ({ default: m.ReplayView })),
+  { ssr: false }
+);
+
+const WrappedView = dynamic(
+  () => import('@/components/wrapped/wrapped-view').then(m => ({ default: m.WrappedView })),
+  { ssr: false }
+);
+
+const DailyReview = dynamic(
+  () => import('@/components/review/daily-review').then(m => ({ default: m.DailyReview })),
+  { ssr: false }
+);
+
+const HabitTrackerView = dynamic(
+  () => import('@/components/habits/habit-tracker').then(m => ({ default: m.HabitTracker })),
+  { ssr: false }
+);
+
+const MonthlyReportView = dynamic(
+  () => import('@/components/stats/monthly-report').then(m => ({ default: m.MonthlyReport })),
+  { ssr: false }
+);
+
+// ─── Suspense fallback ───
+
+function ViewLoadingFallback() {
+  return (
+    <div className="flex items-center justify-center py-16">
+      <Loader2 className="h-6 w-6 animate-spin text-zinc-500" />
+    </div>
+  );
+}
+
+// ─── Main Page ───
 
 export default function HomePage() {
   const mounted = useMounted();
@@ -40,68 +116,60 @@ export default function HomePage() {
   const focusDuration = useAppStore(s => s.focusDuration);
   const user = useAppStore(s => s.user);
 
-  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [forceOnboarded, setForceOnboarded] = useState(false);
+  const [completedForUserId, setCompletedForUserId] = useState<string | null>(null);
+  const [onboardingResult, setOnboardingResult] = useState<{ onboarded: boolean } | null>(null);
   const onboardingCheckedRef = useRef(false);
 
-  // Desktop companion integration
-  const desktop = useDesktopIntegration();
-
-  // WebSocket sync for live desktop data updates
-  useWebsocketSync();
-
+  // Async onboarding check — only needed if session doesn't have onboarded field
   useEffect(() => {
     if (status === 'authenticated' && !onboardingCheckedRef.current) {
       onboardingCheckedRef.current = true;
       const sessionUser = session?.user as Record<string, unknown> | undefined;
-      if (!sessionUser?.onboarded) {
-        fetch('/api/onboarding').then(r => {
-          if (r.status === 401) {
-            // Session not yet established — retry silently
-            onboardingCheckedRef.current = false;
-            return null;
-          }
-          return r.json();
-        }).then(d => {
-          if (d && !d.onboarded) setShowOnboarding(true);
-        }).catch(() => {
-          // Network error — don't show toast, will retry on next render
-          onboardingCheckedRef.current = false;
-        });
+      if (sessionUser?.onboarded === undefined) {
+        fetch('/api/onboarding')
+          .then(r => {
+            if (r.status === 401) return null;
+            if (!r.ok) throw new Error(`Status ${r.status}`);
+            return r.json();
+          })
+          .then(d => {
+            if (d) setOnboardingResult(d);
+          })
+          .catch(() => {});
       }
+    }
+    if (status === 'unauthenticated') {
+      onboardingCheckedRef.current = false;
     }
   }, [status, session]);
 
-  // Send auth token to Electron desktop companion
-  useEffect(() => {
-    if (desktop.isElectron && status === 'authenticated' && session) {
-      // Get the NextAuth session token and send it to Electron
-      const token = (session as unknown as Record<string, unknown>)?.accessToken as string || '';
-      desktop.sendAuthToken(token || 'session-based').catch(() => {});
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- desktop object is stable via hook, only depends on isElectron/sendAuthToken
-  }, [desktop.isElectron, status, session, desktop.sendAuthToken]);
+  // Derive onboarding state from session data
+  // forceOnboarded only applies to the same user who completed onboarding
+  const currentUserId = (session?.user as Record<string, unknown> | undefined)?.id as string | undefined;
+  const sessionOnboarded = (session?.user as Record<string, unknown> | undefined)?.onboarded;
+  const isForceOnboardedForCurrentUser = forceOnboarded && completedForUserId === currentUserId;
+  const needsOnboarding = !isForceOnboardedForCurrentUser && status === 'authenticated' && (sessionOnboarded === false || (sessionOnboarded === undefined && onboardingResult?.onboarded === false));
 
   useEffect(() => {
-    if (status === 'authenticated' && session?.user && !showOnboarding) {
+    if (status === 'authenticated' && session?.user) {
       const sessionUser = session.user as Record<string, unknown>;
       setUser({
         id: (sessionUser.id as string) || '',
         email: (sessionUser.email as string) || '',
         name: (sessionUser.name as string) || null,
-        onboarded: (sessionUser.onboarded as boolean) ?? true,
+        onboarded: (sessionUser.onboarded as boolean) ?? (onboardingResult?.onboarded ?? true),
       });
-      if (currentView === 'landing') {
+      if (!needsOnboarding && currentView === 'landing') {
         setView('dashboard');
       }
-    } else if (status === 'unauthenticated') {
-      setUser(null);
-      setView('landing');
     }
     setLoading(false);
-  }, [status, session, setUser, setView, currentView, setLoading, showOnboarding]);
+  }, [status, session, setUser, setView, currentView, setLoading, needsOnboarding]);
 
   const handleOnboardingComplete = () => {
-    setShowOnboarding(false);
+    setForceOnboarded(true);
+    setCompletedForUserId(currentUserId ?? null);
     if (user) setUser({ ...user, onboarded: true });
     setView('dashboard');
   };
@@ -113,33 +181,39 @@ export default function HomePage() {
   if (!mounted || status === 'loading') {
     return (
       <div className="flex min-h-screen items-center justify-center bg-zinc-950">
-        <div className="flex flex-col items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/10">
-            <svg className="h-5 w-5 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-            </svg>
-          </div>
-          <Loader2 className="h-5 w-5 animate-spin text-zinc-500" />
+        <div className="flex flex-col items-center gap-4">
+          <MindGuardSplashLogo />
+          <Loader2 className="h-4 w-4 animate-spin text-zinc-500" />
         </div>
       </div>
     );
   }
 
   if (currentView === 'landing' || status === 'unauthenticated') {
-    return <LandingPage />;
+    return (
+      <Suspense fallback={<ViewLoadingFallback />}>
+        <LandingPage />
+      </Suspense>
+    );
   }
 
-  if (showOnboarding) {
-    return <OnboardingFlow onComplete={handleOnboardingComplete} />;
+  if (needsOnboarding) {
+    return (
+      <Suspense fallback={<ViewLoadingFallback />}>
+        <OnboardingFlow onComplete={handleOnboardingComplete} />
+      </Suspense>
+    );
   }
 
   if (focusMode === 'focus') {
     return (
-      <FocusMode
-        duration={focusDuration}
-        missionTitle={activeMission?.title || null}
-        onExit={handleFocusExit}
-      />
+      <Suspense fallback={<ViewLoadingFallback />}>
+        <FocusMode
+          duration={focusDuration}
+          missionTitle={activeMission?.title || null}
+          onExit={handleFocusExit}
+        />
+      </Suspense>
     );
   }
 
@@ -148,23 +222,26 @@ export default function HomePage() {
       <AnimatePresence mode="wait">
         <motion.div
           key={currentView}
-          initial={{ opacity: 0, y: 12, filter: 'blur(4px)' }}
-          animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-          exit={{ opacity: 0, y: -8, filter: 'blur(2px)' }}
-          transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.15, ease: [0.4, 0, 0.2, 1] }}
         >
-          {currentView === 'dashboard' && <DashboardView />}
-          {currentView === 'life' && <LifeDashboard />}
-          {currentView === 'mission' && <MissionView />}
-          {currentView === 'timer' && <TimerView />}
-          {currentView === 'reflection' && <ReflectionView />}
-          {currentView === 'sessions' && <SessionHistoryView />}
-          {currentView === 'stats' && <StatsView />}
-          {currentView === 'replay' && <ReplayView />}
-          {currentView === 'review' && <DailyReview />}
-          {currentView === 'wrapped' && <WrappedView />}
-          {currentView === 'assistant' && <AssistantView />}
-          {currentView === 'settings' && <SettingsView />}
+          <Suspense fallback={<ViewLoadingFallback />}>
+            {currentView === 'dashboard' && <DashboardView />}
+            {currentView === 'life' && <LifeDashboard />}
+            {currentView === 'mission' && <MissionView />}
+            {currentView === 'timer' && <TimerView />}
+            {currentView === 'reflection' && <ReflectionView />}
+            {currentView === 'sessions' && <SessionHistoryView />}
+            {currentView === 'stats' && <StatsView />}
+            {currentView === 'replay' && <ReplayView />}
+            {currentView === 'review' && <DailyReview />}
+            {currentView === 'wrapped' && <WrappedView />}
+            {currentView === 'settings' && <SettingsView />}
+            {currentView === 'habits' && <HabitTrackerView />}
+            {currentView === 'monthly' && <MonthlyReportView />}
+          </Suspense>
         </motion.div>
       </AnimatePresence>
     </AppShell>

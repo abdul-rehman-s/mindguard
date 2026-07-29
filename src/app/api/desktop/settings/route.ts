@@ -42,10 +42,10 @@ function parseSettings(raw: {
     runInBackground: raw.runInBackground,
     privacyMode: raw.privacyMode,
     trackingEnabled: raw.trackingEnabled,
-    trackingExclusions: raw.trackingExclusions ? JSON.parse(raw.trackingExclusions) : [],
-    blockedApps: raw.blockedApps ? JSON.parse(raw.blockedApps) : [],
-    blockedWebsites: raw.blockedWebsites ? JSON.parse(raw.blockedWebsites) : [],
-    notificationPrefs: raw.notificationPrefs ? JSON.parse(raw.notificationPrefs) : DEFAULT_SETTINGS.notificationPrefs,
+    trackingExclusions: (() => { try { return raw.trackingExclusions ? JSON.parse(raw.trackingExclusions) : []; } catch { return []; } })(),
+    blockedApps: (() => { try { return raw.blockedApps ? JSON.parse(raw.blockedApps) : []; } catch { return []; } })(),
+    blockedWebsites: (() => { try { return raw.blockedWebsites ? JSON.parse(raw.blockedWebsites) : []; } catch { return []; } })(),
+    notificationPrefs: (() => { try { return raw.notificationPrefs ? JSON.parse(raw.notificationPrefs) : DEFAULT_SETTINGS.notificationPrefs; } catch { return DEFAULT_SETTINGS.notificationPrefs; } })(),
     focusProtection: raw.focusProtection,
     muteNotifications: raw.muteNotifications,
     trackerInterval: raw.trackerInterval,
@@ -53,8 +53,8 @@ function parseSettings(raw: {
 }
 
 /** GET — Desktop settings */
-export async function GET(request: Request) {
-  const userIdOr401 = await getAuthUserId(request);
+export async function GET() {
+  const userIdOr401 = await getAuthUserId();
   if (userIdOr401 instanceof NextResponse) return userIdOr401;
   const userId = userIdOr401;
 
@@ -75,7 +75,7 @@ export async function GET(request: Request) {
 
 /** PUT — Update desktop settings */
 export async function PUT(req: Request) {
-  const userIdOr401 = await getAuthUserId(req);
+  const userIdOr401 = await getAuthUserId();
   if (userIdOr401 instanceof NextResponse) return userIdOr401;
   const userId = userIdOr401;
 

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getAuthUserId } from '@/lib/auth-utils';
 import { db } from '@/lib/db';
 import { logError } from '@/lib/logger';
-import { format, startOfDay, endOfDay, startOfWeek, isSameDay } from 'date-fns';
+import { format, startOfDay, endOfDay, subDays, startOfWeek, isSameDay } from 'date-fns';
 
 export async function GET() {
   const userIdOr401 = await getAuthUserId();
@@ -129,7 +129,7 @@ export async function GET() {
       timeline.push({ time: format(new Date(reflection.updatedAt), 'h:mm a'), event: 'Daily reflection written', type: 'reflection' });
     }
     for (const m of todayMissions) {
-      timeline.push({ time: format(new Date(m.completedAt!), 'h:mm a'), event: `Mission completed: ${m.title}`, type: 'achievement' });
+      timeline.push({ time: format(new Date(m.completedAt ?? m.updatedAt ?? now), 'h:mm a'), event: `Mission completed: ${m.title}`, type: 'achievement' });
     }
     for (const a of achievements) {
       timeline.push({ time: '', event: `Achievement unlocked: ${a.type}`, type: 'achievement' });

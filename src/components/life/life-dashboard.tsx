@@ -5,12 +5,15 @@ import { motion } from 'framer-motion';
 import {
   Laptop,
   Brain,
+  Pause,
   Coffee,
   Zap,
   Target,
   Clock,
   Flame,
+  Award,
   TrendingUp,
+  Loader2,
   AlertCircle,
   Monitor,
   BarChart3,
@@ -27,7 +30,7 @@ import { Badge } from '@/components/ui/badge';
 import { useAppStore } from '@/stores/app-store';
 import { StaggerContainer, StaggerItem } from '@/components/premium/stagger';
 import { AnimatedNumber } from '@/components/premium/animated-number';
-import { cn } from '@/lib/utils';
+import { cn, formatDuration } from '@/lib/utils';
 import { fadeInUp } from '@/lib/animations';
 import type { LifeDashboardData } from '@/types';
 
@@ -313,7 +316,9 @@ export function LifeDashboard() {
       if (!res.ok) throw new Error('Failed');
       const data = (await res.json()) as LifeDashboardData;
       setLifeData(data);
-      // Also fetch desktop status for tracker state
+      setTrackerConnected(data.trackerConnected ?? false);
+
+      // Also fetch desktop status for current app/website
       const statusRes = await fetch('/api/desktop/status');
       if (statusRes.ok) {
         const statusData = await statusRes.json();

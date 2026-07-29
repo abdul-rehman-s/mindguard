@@ -9,7 +9,7 @@ import type { ActivityType } from "@/types";
 const PRODUCTIVE_TYPES: ActivityType[] = ["focus", "deep_work", "learning", "coding", "writing"];
 
 const notificationTriggerSchema = z.object({
-  type: z.enum(["idle_alert", "break_reminder", "focus_celebration", "back_to_work", "context_switch_alert", "mission_reminder"]),
+  type: z.enum(["idle_alert", "break_reminder", "focus_celebration", "back_to_work", "context_switch_alert"]),
   title: z.string().max(200),
   body: z.string().max(500),
   actionUrl: z.string().max(200).optional(),
@@ -17,7 +17,7 @@ const notificationTriggerSchema = z.object({
 
 /** POST — Trigger desktop notification (from Electron tracker) */
 export async function POST(req: Request) {
-  const userIdOr401 = await getAuthUserId(req);
+  const userIdOr401 = await getAuthUserId();
   if (userIdOr401 instanceof NextResponse) return userIdOr401;
   const userId = userIdOr401;
 
@@ -31,7 +31,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ suppressed: true, reason: "notifications muted" });
     }
 
-    const prefs = settings?.notificationPrefs ? JSON.parse(settings.notificationPrefs) : null;
+    const prefs = (() => { try { return settings?.notificationPrefs ? JSON.parse(settings.notificationPrefs) : null; } catch { return null; } })();
 
     // Check if this notification type is enabled
     if (prefs) {
@@ -90,8 +90,8 @@ export async function POST(req: Request) {
 }
 
 /** GET — Get current desktop notification state (for real-time polling) */
-export async function GET(request: Request) {
-  const userIdOr401 = await getAuthUserId(request);
+export async function GET() {
+  const userIdOr401 = await getAuthUserId();
   if (userIdOr401 instanceof NextResponse) return userIdOr401;
   const userId = userIdOr401;
 

@@ -227,7 +227,7 @@ export async function GET() {
     // Insight 2: Best hour (using shared helper)
     const bestHour = findBestHour(sessions);
     if (bestHour !== null && focusByHour[bestHour] > 0) {
-      const hourLabel = format(new Date().setHours(bestHour, 0, 0, 0), 'h a');
+      const hourLabel = format(new Date(new Date().setHours(bestHour, 0, 0, 0)), 'h a');
       insights.push({
         type: 'pattern',
         title: `Peak focus hour is ${hourLabel}`,

@@ -2,15 +2,15 @@ import { NextResponse } from "next/server";
 import { getAuthUserId } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { logError } from "@/lib/logger";
-import { startOfDay, subMinutes } from "date-fns";
+import { endOfDay, startOfDay, subMinutes } from "date-fns";
 import type { ActivityType } from "@/types";
 
-const _PRODUCTIVE_TYPES: ActivityType[] = ["focus", "deep_work", "learning", "coding", "writing", "meetings"];
-const _DISTRACTED_TYPES: ActivityType[] = ["distracted", "browsing", "entertainment", "gaming", "app_usage", "website_usage"];
+const PRODUCTIVE_TYPES: ActivityType[] = ["focus", "deep_work", "learning", "coding", "writing", "meetings"];
+const DISTRACTED_TYPES: ActivityType[] = ["distracted", "browsing", "entertainment", "gaming", "app_usage", "website_usage"];
 
 /** GET — Current desktop tracking status */
-export async function GET(request: Request) {
-  const userIdOr401 = await getAuthUserId(request);
+export async function GET() {
+  const userIdOr401 = await getAuthUserId();
   if (userIdOr401 instanceof NextResponse) return userIdOr401;
   const userId = userIdOr401;
 

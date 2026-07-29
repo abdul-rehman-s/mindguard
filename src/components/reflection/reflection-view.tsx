@@ -13,12 +13,14 @@ import {
   ChevronDown,
   ChevronUp,
   History,
+  SmilePlus,
+  Zap,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent } from '@/components/ui/card';
 import { useAppStore } from '@/stores/app-store';
-import { cn, formatDateDisplay } from '@/lib/utils';
+import { cn, formatDateDisplay, formatTimeDisplay } from '@/lib/utils';
 import { staggerContainer, staggerItem } from '@/lib/animations';
 import { toast } from 'sonner';
 import type { DailyReflection } from '@/types';
@@ -122,7 +124,7 @@ const ReflectionCard = React.memo(function ReflectionCard({ reflection }: { refl
 });
 
 export function ReflectionView() {
-  const _todayReflection = useAppStore(s => s.todayReflection);
+  const todayReflection = useAppStore(s => s.todayReflection);
   const setTodayReflection = useAppStore(s => s.setTodayReflection);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -132,6 +134,8 @@ export function ReflectionView() {
     distraction: '',
     wentWell: '',
     tomorrowMission: '',
+    mood: 0 as number,       // 1-5, 0 = unset
+    energy: 0 as number,     // 1-5, 0 = unset
   });
   const [activeField, setActiveField] = useState<string | null>(null);
   const [reflections, setReflections] = useState<DailyReflection[]>([]);
@@ -149,6 +153,8 @@ export function ReflectionView() {
           distraction: data.todayReflection.distraction,
           wentWell: data.todayReflection.wentWell,
           tomorrowMission: data.todayReflection.tomorrowMission,
+          mood: data.todayReflection.mood || 0,
+          energy: data.todayReflection.energy || 0,
         });
         setSaved(true);
       }
@@ -177,6 +183,8 @@ export function ReflectionView() {
           distraction: form.distraction.trim(),
           wentWell: form.wentWell.trim(),
           tomorrowMission: form.tomorrowMission.trim(),
+          mood: form.mood > 0 ? form.mood : undefined,
+          energy: form.energy > 0 ? form.energy : undefined,
         }),
       });
       if (!res.ok) throw new Error('Failed to save');
@@ -235,6 +243,98 @@ export function ReflectionView() {
       {/* Step Progress Indicator */}
       <motion.div variants={staggerItem}>
         <StepIndicator currentStep={currentStep >= 0 ? currentStep : completedSteps - 1} />
+      </motion.div>
+
+      {/* Mood & Energy Selector */}
+      <motion.div variants={staggerItem}>
+        <Card className="card-glow border-white/[0.06] bg-white/[0.02]">
+          <CardContent className="p-4 sm:p-5">
+            <div className="flex flex-col gap-5">
+              {/* Mood */}
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <SmilePlus className="h-4 w-4 text-emerald-400/80" aria-hidden="true" />
+                  <span className="text-[10px] font-medium uppercase tracking-wider text-zinc-500">How do you feel?</span>
+                </div>
+                <div className="flex items-center gap-2" role="radiogroup" aria-label="Mood selector">
+                  {[
+                    { value: 1, emoji: '😞', label: 'Terrible' },
+                    { value: 2, emoji: '😕', label: 'Not great' },
+                    { value: 3, emoji: '😐', label: 'Okay' },
+                    { value: 4, emoji: '😊', label: 'Good' },
+                    { value: 5, emoji: '🤩', label: 'Amazing' },
+                  ].map(m => (
+                    <button
+                      key={m.value}
+                      type="button"
+                      onClick={() => { setForm(prev => ({ ...prev, mood: m.value })); setSaved(false); }}
+                      role="radio"
+                      aria-checked={form.mood === m.value}
+                      aria-label={`Mood: ${m.label}`}
+                      className={cn(
+                        'flex flex-col items-center gap-1 rounded-lg px-2.5 py-2 transition-all duration-200 cursor-pointer',
+                        form.mood === m.value
+                          ? 'bg-emerald-500/15 ring-1 ring-emerald-500/20 scale-105'
+                          : 'bg-white/[0.03] hover:bg-white/[0.06]'
+                      )}
+                    >
+                      <span className={cn(
+                        'text-lg transition-all duration-200',
+                        form.mood === m.value ? 'grayscale-0 scale-110' : 'grayscale-50 opacity-50'
+                      )}>{m.emoji}</span>
+                      <span className={cn(
+                        'text-[9px] font-medium',
+                        form.mood === m.value ? 'text-emerald-400/70' : 'text-zinc-600'
+                      )}>{m.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Energy */}
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <Zap className="h-4 w-4 text-emerald-400/80" aria-hidden="true" />
+                  <span className="text-[10px] font-medium uppercase tracking-wider text-zinc-500">Energy level?</span>
+                </div>
+                <div className="flex items-center gap-2" role="radiogroup" aria-label="Energy selector">
+                  {[
+                    { value: 1, emoji: '🔋', label: 'Drained', sub: 'Low' },
+                    { value: 2, emoji: '🔋', label: 'Tired', sub: 'Below avg' },
+                    { value: 3, emoji: '⚡', label: 'Normal', sub: 'Medium' },
+                    { value: 4, emoji: '⚡', label: 'Energized', sub: 'High' },
+                    { value: 5, emoji: '⚡', label: 'Supercharged', sub: 'Peak' },
+                  ].map(e => (
+                    <button
+                      key={e.value}
+                      type="button"
+                      onClick={() => { setForm(prev => ({ ...prev, energy: e.value })); setSaved(false); }}
+                      role="radio"
+                      aria-checked={form.energy === e.value}
+                      aria-label={`Energy: ${e.label}`}
+                      className={cn(
+                        'flex flex-col items-center gap-1 rounded-lg px-2.5 py-2 transition-all duration-200 cursor-pointer',
+                        form.energy === e.value
+                          ? 'bg-emerald-500/15 ring-1 ring-emerald-500/20 scale-105'
+                          : 'bg-white/[0.03] hover:bg-white/[0.06]'
+                      )}
+                    >
+                      <span className={cn(
+                        'text-base transition-all duration-200',
+                        form.energy === e.value ? 'grayscale-0 scale-110' : 'grayscale-50 opacity-50',
+                        e.value <= 2 ? 'text-amber-400' : 'text-emerald-400'
+                      )}>{e.emoji}</span>
+                      <span className={cn(
+                        'text-[9px] font-medium',
+                        form.energy === e.value ? 'text-emerald-400/70' : 'text-zinc-600'
+                      )}>{e.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </motion.div>
 
       {error && (

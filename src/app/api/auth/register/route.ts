@@ -3,8 +3,13 @@ import { db } from "@/lib/db";
 import { hashPassword } from "@/lib/auth";
 import { registerSchema } from "@/lib/validators";
 import { logError } from "@/lib/logger";
+import { applyRateLimit, AUTH_RATE_LIMITS } from "@/lib/rate-limiter";
 
 export async function POST(request: Request) {
+  // Rate limiting: max 5 registrations per 15 minutes per IP
+  const rateLimitResponse = applyRateLimit(request, AUTH_RATE_LIMITS.register);
+  if (rateLimitResponse) return rateLimitResponse;
+
   try {
     const body = await request.json();
     const validated = registerSchema.parse(body);

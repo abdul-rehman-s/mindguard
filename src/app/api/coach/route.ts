@@ -1,8 +1,10 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUserId } from '@/lib/auth-utils';
 import { db } from '@/lib/db';
 import { calculateStreak, findBestHour, findBestWeekday, weekdayLabel, hourLabel } from '@/lib/analytics';
-import { logError } from '@/lib/logger';
+import { logError, logInfo } from '@/lib/logger';
+import { aiCompleteWithFallback, type AIProviderConfig } from '@/lib/ai-provider';
+import { buildCoachContext, buildCoachPrompt, contextToText, type CoachMode } from '@/lib/coach-context';
 import {
   format,
   startOfDay,
@@ -12,224 +14,229 @@ import {
   differenceInCalendarDays,
 } from 'date-fns';
 
+// ─── GET: Daily briefing (enhanced with AI) ───
+
 export async function GET() {
   const userIdOr401 = await getAuthUserId();
   if (userIdOr401 instanceof NextResponse) return userIdOr401;
   const userId = userIdOr401;
 
   try {
-    const now = new Date();
-    const todayStart = startOfDay(now);
-    const todayEnd = endOfDay(now);
-    const yesterdayStart = startOfDay(subDays(now, 1));
-    const yesterdayEnd = endOfDay(subDays(now, 1));
-    const weekStart = startOfWeek(now, { weekStartsOn: 1 });
-    const last30Start = subDays(now, 30);
+    // Build coach context from user data
+    const ctx = await buildCoachContext(userId);
 
-    const [
-      user,
-      todaySessions,
-      yesterdaySessions,
-      weekSessions,
-      last30Sessions,
-      last30Reflections,
-      weekMissionsCompleted,
-      streak,
-    ] = await Promise.all([
-      db.user.findUnique({
-        where: { id: userId },
-        select: { name: true, displayName: true },
-      }),
-      db.focusSession.findMany({
-        where: {
-          userId,
-          startedAt: { gte: todayStart, lte: todayEnd },
-          type: { not: 'break' },
-        },
-        select: { id: true, duration: true, startedAt: true },
-      }),
-      db.focusSession.findMany({
-        where: {
-          userId,
-          startedAt: { gte: yesterdayStart, lte: yesterdayEnd },
-          type: { not: 'break' },
-        },
-        select: { id: true, duration: true, startedAt: true },
-      }),
-      db.focusSession.findMany({
-        where: {
-          userId,
-          startedAt: { gte: weekStart },
-          type: { not: 'break' },
-        },
-        select: { id: true, duration: true, startedAt: true },
-      }),
-      db.focusSession.findMany({
-        where: {
-          userId,
-          startedAt: { gte: last30Start },
-          type: { not: 'break' },
-        },
-        select: { startedAt: true, duration: true },
-      }),
-      db.dailyReflection.findMany({
-        where: { userId, date: { gte: format(last30Start, 'yyyy-MM-dd') } },
-        select: { date: true },
-      }),
-      db.mission.count({
-        where: {
-          userId,
-          status: 'completed',
-          completedAt: { gte: weekStart },
-        },
-      }),
-      calculateStreak(userId),
-    ]);
+    // Get user's AI provider settings
+    const settings = await db.userSettings.findUnique({
+      where: { userId },
+      select: { aiProvider: true, aiApiKey: true, aiModel: true, aiOllamaUrl: true, coachPersonality: true },
+    });
 
-    const userName = user?.displayName || user?.name || 'there';
+    const aiConfig: AIProviderConfig = {
+      provider: (settings?.aiProvider as AIProviderConfig['provider']) || 'z-ai',
+      apiKey: settings?.aiApiKey,
+      model: settings?.aiModel,
+      ollamaUrl: settings?.aiOllamaUrl,
+    };
 
-    const todayMinutes = Math.round(
-      todaySessions.reduce((acc, s) => acc + s.duration, 0) / 60
-    );
-    const yesterdayMinutes = Math.round(
-      yesterdaySessions.reduce((acc, s) => acc + s.duration, 0) / 60
-    );
-    const weekMinutes = Math.round(
-      weekSessions.reduce((acc, s) => acc + s.duration, 0) / 60
-    );
+    // Determine the right mode based on time of day
+    const hour = ctx.hour;
+    let mode: CoachMode = 'briefing';
+    if (hour < 12) mode = 'morning_plan';
+    else if (hour >= 21) mode = 'night_review';
 
-    const bestHourResult = findBestHour(last30Sessions);
-    const bestWeekdayResult = findBestWeekday(last30Sessions);
-    const bestWeekday = bestWeekdayResult !== null ? weekdayLabel(bestWeekdayResult) : '—';
-    const bestWeekdayMinutes = bestWeekdayResult !== null
-      ? last30Sessions.filter(s => new Date(s.startedAt).getDay() === bestWeekdayResult).reduce((acc, s) => acc + s.duration, 0)
-      : 0;
+    // Build prompt for AI coach
+    const messages = buildCoachPrompt(mode, ctx);
 
-    // Reflection rate over last 30 days
-    const last30DayCount = differenceInCalendarDays(now, last30Start) + 1;
-    const reflectionRate =
-      last30DayCount > 0
-        ? Math.round((last30Reflections.length / last30DayCount) * 100)
-        : 0;
+    // Call AI with fallback
+    let aiBriefing: string | null = null;
+    let aiMorningPlan: string | null = null;
+    let aiNightReview: string | null = null;
+    let aiProviderUsed: string | null = null;
+    let aiModelUsed: string | null = null;
 
-    // Greeting based on hour
-    const hour = now.getHours();
-    let greeting = 'Hello';
-    if (hour < 5) greeting = 'Burning the midnight oil';
-    else if (hour < 12) greeting = 'Good morning';
-    else if (hour < 17) greeting = 'Good afternoon';
-    else if (hour < 21) greeting = 'Good evening';
-    else greeting = 'Good night';
+    // Only call AI if user has some data (not completely empty)
+    const hasData = ctx.todayMinutes > 0 || ctx.weekMinutes > 0 || ctx.streak > 0;
 
-    // ---- Recommendations generated from ACTUAL data patterns ----
+    if (hasData) {
+      const result = await aiCompleteWithFallback(messages, aiConfig);
+      if (result.success) {
+        aiProviderUsed = result.provider;
+        aiModelUsed = result.model || null;
+
+        // Store in the right field based on mode
+        if (mode === 'morning_plan') aiMorningPlan = result.content;
+        else if (mode === 'night_review') aiNightReview = result.content;
+        else aiBriefing = result.content;
+      } else {
+        logError('coach', `AI completion failed: ${result.error}`);
+      }
+    }
+
+    // Also compute the static recommendations (as fallback / supplement)
     const recommendations: string[] = [];
 
-    if (todaySessions.length === 0) {
+    if (ctx.todayMinutes === 0) {
       recommendations.push(
-        `You haven't started a focus session yet today. Even a 15-minute block will keep your ${streak > 1 ? `${streak}-day streak` : 'momentum'} alive.`
+        `You haven't started a focus session yet today. Even a 15-minute block will keep your ${ctx.streak > 1 ? `${ctx.streak}-day streak` : 'momentum'} alive.`
       );
-    } else if (todayMinutes < 30) {
+    } else if (ctx.todayMinutes < 30) {
       recommendations.push(
-        `You've logged ${todayMinutes} minute${todayMinutes === 1 ? '' : 's'} today. A single 25-minute deep work block would double your output.`
+        `You've logged ${ctx.todayMinutes} minute${ctx.todayMinutes === 1 ? '' : 's'} today. A single 25-minute deep work block would double your output.`
       );
-    } else if (todayMinutes < 90) {
+    } else if (ctx.todayMinutes < 90) {
       recommendations.push(
-        `Solid start at ${todayMinutes} minutes today. Consider one more session to push past the 90-minute focus threshold.`
+        `Solid start at ${ctx.todayMinutes} minutes today. Consider one more session to push past the 90-minute focus threshold.`
       );
     } else {
       recommendations.push(
-        `${todayMinutes} minutes of focused work today — your attention is on point. Protect the rest of the day from context switches.`
+        `${ctx.todayMinutes} minutes of focused work today — your attention is on point. Protect the rest of the day from context switches.`
       );
     }
 
-    if (yesterdayMinutes > 0 && todayMinutes < yesterdayMinutes) {
+    if (ctx.yesterdayMinutes > 0 && ctx.todayMinutes < ctx.yesterdayMinutes) {
       const dropPct = Math.round(
-        ((yesterdayMinutes - todayMinutes) / yesterdayMinutes) * 100
+        ((ctx.yesterdayMinutes - ctx.todayMinutes) / ctx.yesterdayMinutes) * 100
       );
       recommendations.push(
-        `You're ${dropPct}% behind yesterday's ${yesterdayMinutes}-minute pace. One focused session will close the gap.`
+        `You're ${dropPct}% behind yesterday's ${ctx.yesterdayMinutes}-minute pace. One focused session will close the gap.`
       );
-    } else if (yesterdayMinutes > 0 && todayMinutes > yesterdayMinutes) {
+    } else if (ctx.yesterdayMinutes > 0 && ctx.todayMinutes > ctx.yesterdayMinutes) {
       recommendations.push(
-        `You've already surpassed yesterday's ${yesterdayMinutes} minutes. Momentum is on your side.`
-      );
-    } else if (yesterdayMinutes === 0 && todayMinutes > 0) {
-      recommendations.push(
-        `Yesterday had no recorded focus time. Today's ${todayMinutes} minutes is a fresh start — keep it going.`
+        `You've already surpassed yesterday's ${ctx.yesterdayMinutes} minutes. Momentum is on your side.`
       );
     }
 
-    if (bestHourResult !== null) {
-      const hLabel = hourLabel(bestHourResult);
-      const formattedHour = format(new Date().setHours(bestHourResult, 0, 0, 0), 'h a');
+    if (ctx.bestHour !== null) {
+      const hLabel = hourLabel(ctx.bestHour);
       recommendations.push(
-        `Your data says you focus best in the ${hLabel} (around ${formattedHour}). Try scheduling your hardest mission in that window.`
+        `Your data says you focus best in the ${hLabel} (around ${ctx.bestHour}:00). Try scheduling your hardest mission in that window.`
       );
     }
 
-    if (bestWeekdayResult !== null) {
+    if (ctx.bestWeekday) {
       recommendations.push(
-        `${bestWeekday} is your strongest weekday (${Math.round(bestWeekdayMinutes / 60)} focus minutes logged in the last 30 days). Plan deep work for ${bestWeekday}s.`
+        `${ctx.bestWeekday} is your strongest weekday. Plan deep work for ${ctx.bestWeekday}s.`
       );
     }
 
-    if (reflectionRate < 30) {
+    if (ctx.reflectionRate < 30) {
       recommendations.push(
-        `Your reflection rate is ${reflectionRate}% over the last 30 days. Reflecting for 60 seconds at day's end improves tomorrow's focus.`
-      );
-    } else if (reflectionRate >= 70) {
-      recommendations.push(
-        `You've reflected on ${reflectionRate}% of the last 30 days — strong self-awareness habit. Keep it up.`
+        `Your reflection rate is ${ctx.reflectionRate}% over the last 30 days. Reflecting for 60 seconds at day's end improves tomorrow's focus.`
       );
     }
 
-    if (weekMissionsCompleted === 0) {
+    if (ctx.weekMissionsCompleted === 0) {
       recommendations.push(
         `No missions completed yet this week. Pick one mission and ship it before Sunday.`
       );
-    } else if (weekMissionsCompleted >= 3) {
+    }
+
+    if (ctx.streak >= 3) {
       recommendations.push(
-        `${weekMissionsCompleted} missions completed this week — execution is high. Consider raising the bar for next week.`
+        `${ctx.streak}-day streak active. Don't break the chain — even a short session today keeps it alive.`
       );
     }
 
-    if (streak >= 3) {
-      recommendations.push(
-        `${streak}-day streak active. Don't break the chain — even a short session today keeps it alive.`
-      );
-    }
-
-    // Cap recommendations at 5 to keep the briefing tight
     const trimmedRecs = recommendations.slice(0, 5);
 
-    // ---- Summary: a natural-language paragraph from real numbers ----
-    const changeVsYesterday = yesterdayMinutes > 0
-      ? `${todayMinutes > yesterdayMinutes ? 'up' : 'down'} ${Math.abs(Math.round(((todayMinutes - yesterdayMinutes) / yesterdayMinutes) * 100))}% vs yesterday`
-      : todayMinutes > 0
+    // Static summary as baseline
+    const changeVsYesterday = ctx.yesterdayMinutes > 0
+      ? `${ctx.todayMinutes > ctx.yesterdayMinutes ? 'up' : 'down'} ${Math.abs(Math.round(((ctx.todayMinutes - ctx.yesterdayMinutes) / ctx.yesterdayMinutes) * 100))}% vs yesterday`
+      : ctx.todayMinutes > 0
         ? 'a fresh start vs no focus time yesterday'
         : 'no focus time yet today';
 
-    const summary = `${todayMinutes} focused minute${todayMinutes === 1 ? '' : 's'} today — ${changeVsYesterday}. ${weekMinutes} minutes this week across ${weekSessions.length} session${weekSessions.length === 1 ? '' : 's'}. ${streak}-day streak. ${weekMissionsCompleted} mission${weekMissionsCompleted === 1 ? '' : 's'} completed this week, reflection rate at ${reflectionRate}%.`;
+    const summary = `${ctx.todayMinutes} focused minute${ctx.todayMinutes === 1 ? '' : 's'} today — ${changeVsYesterday}. ${ctx.weekMinutes} minutes this week across ${ctx.sessionCountWeek} session${ctx.sessionCountWeek === 1 ? '' : 's'}. ${ctx.streak}-day streak. ${ctx.weekMissionsCompleted} mission${ctx.weekMissionsCompleted === 1 ? '' : 's'} completed this week, reflection rate at ${ctx.reflectionRate}%.`;
 
     return NextResponse.json({
-      greeting,
-      userName,
-      todayMinutes,
-      yesterdayMinutes,
-      weekMinutes,
-      bestHour: bestHourResult,
-      bestWeekday,
-      streak,
-      weekMissionsCompleted,
-      weekReflections: last30Reflections.length,
-      reflectionRate,
+      greeting: ctx.greeting,
+      userName: ctx.userName,
+      todayMinutes: ctx.todayMinutes,
+      yesterdayMinutes: ctx.yesterdayMinutes,
+      weekMinutes: ctx.weekMinutes,
+      bestHour: ctx.bestHour,
+      bestWeekday: ctx.bestWeekday,
+      streak: ctx.streak,
+      weekMissionsCompleted: ctx.weekMissionsCompleted,
+      weekReflections: ctx.reflectionRate,
       recommendations: trimmedRecs,
       summary,
+      // AI-enhanced fields
+      aiBriefing,
+      aiMorningPlan,
+      aiNightReview,
+      aiProvider: aiProviderUsed,
+      aiModel: aiModelUsed,
+      coachPersonality: ctx.coachPersonality,
     });
   } catch (e) {
     logError("coach", "Failed to fetch coach briefing", e);
     return NextResponse.json(
       { error: 'Failed to fetch coach briefing' },
+      { status: 500 }
+    );
+  }
+}
+
+// ─── POST: Ask the coach a question ───
+
+export async function POST(request: NextRequest) {
+  const userIdOr401 = await getAuthUserId();
+  if (userIdOr401 instanceof NextResponse) return userIdOr401;
+  const userId = userIdOr401;
+
+  try {
+    const body = await request.json();
+    const { question, mode } = body as { question?: string; mode?: CoachMode };
+
+    if (!question && !mode) {
+      return NextResponse.json(
+        { error: 'Please provide a question or mode' },
+        { status: 400 }
+      );
+    }
+
+    const coachMode: CoachMode = mode || 'question';
+
+    // Build context
+    const ctx = await buildCoachContext(userId);
+
+    // Get AI settings
+    const settings = await db.userSettings.findUnique({
+      where: { userId },
+      select: { aiProvider: true, aiApiKey: true, aiModel: true, aiOllamaUrl: true },
+    });
+
+    const aiConfig: AIProviderConfig = {
+      provider: (settings?.aiProvider as AIProviderConfig['provider']) || 'z-ai',
+      apiKey: settings?.aiApiKey,
+      model: settings?.aiModel,
+      ollamaUrl: settings?.aiOllamaUrl,
+    };
+
+    // Build prompt
+    const messages = buildCoachPrompt(coachMode, ctx, question);
+
+    // Call AI
+    const result = await aiCompleteWithFallback(messages, aiConfig);
+
+    if (!result.success) {
+      return NextResponse.json(
+        { error: result.error || 'AI coach failed to respond' },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({
+      response: result.content,
+      provider: result.provider,
+      model: result.model,
+      mode: coachMode,
+    });
+  } catch (e) {
+    logError('coach', 'Failed to process coach question', e);
+    return NextResponse.json(
+      { error: 'Failed to process coach question' },
       { status: 500 }
     );
   }

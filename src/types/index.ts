@@ -1,6 +1,6 @@
-import type { Mission, FocusSession, DailyReflection, User, Achievement, DesktopActivity, Notification } from "@prisma/client";
+import type { Mission, FocusSession, DailyReflection, User, Achievement, DesktopActivity, Notification, Device, Habit, HabitEntry } from "@prisma/client";
 
-export type { Mission, FocusSession, DailyReflection, User, Achievement, DesktopActivity, Notification };
+export type { Mission, FocusSession, DailyReflection, User, Achievement, DesktopActivity, Notification, Device, Habit, HabitEntry };
 
 export type MissionWithSessions = Mission & {
   focusSessions: FocusSession[];
@@ -19,7 +19,8 @@ export type AppView =
   | "replay"
   | "review"
   | "wrapped"
-  | "assistant";
+  | "habits"
+  | "monthly";
 
 export type MissionStatus = "active" | "completed" | "deleted";
 export type MissionPriority = "low" | "medium" | "high";
@@ -60,6 +61,24 @@ export interface DashboardStats {
   todaySessions: number;
   avgSessionMinutes: number;
   bestDay: { day: string; minutes: number; sessions: number } | null;
+  // Trend / comparison data
+  yesterdayFocusMinutes: number;
+  lastWeekFocusMinutes: number;
+  // Personalization data
+  primaryUse: string | null;
+  workSchedule: string | null;
+  goals: string[];            // parsed from JSON
+  focusGoalMinutes: number;
+  biggestDistraction: string | null;
+  // Distraction summary (from desktop tracker)
+  todayDistractionMinutes: number;
+  todayDistractionTopApps: { name: string; minutes: number }[];
+  // Focus blocks suggestion data
+  bestFocusHours: number[];
+  // Smart Focus Score
+  smartFocusScore: number;
+  smartScoreColor: { bg: string; text: string; label: string };
+  smartScoreTrend: number;  // positive = improving vs yesterday
 }
 
 export interface WeeklyData {
@@ -76,6 +95,25 @@ export interface OnboardingData {
   primaryUse: string;
   firstMission: string;
   estimatedDuration: number;
+  // Psychological profiling fields (Task 2-c)
+  role?: string;
+  workSchedule?: string;
+  workHours?: number;
+  wakeTime?: string;
+  sleepTime?: string;
+  chronotype?: string;
+  focusStyle?: string;
+  hasAdhd?: boolean;
+  pomodoroPreference?: string;
+  deepWorkDuration?: number;
+  preferredSchedule?: string;
+  coachPersonality?: string;
+  motivationStyle?: string;
+  biggestDistraction?: string;
+  distractionsList?: string[];
+  distractionRanking?: string[];
+  goals?: string[];
+  focusGoalMinutes?: number;
 }
 
 export interface AchievementDef {
@@ -91,6 +129,36 @@ export interface HeatmapDay {
   minutes: number;
   sessions: number;
   mission?: string;
+  habitCompleted?: number;  // how many habits completed that day
+}
+
+export interface HabitWithEntries extends Habit {
+  entries: HabitEntry[];
+}
+
+export interface HabitStreak {
+  habitId: string;
+  currentStreak: number;
+  longestStreak: number;
+}
+
+export interface MonthlyReportData {
+  totalFocusHours: number;
+  averageDailyFocus: number;
+  bestDay: { date: string; minutes: number } | null;
+  worstDay: { date: string; minutes: number } | null;
+  mostProductiveHour: number | null;
+  habitCompletionRate: number;
+  moodAverage: number | null;
+  energyAverage: number | null;
+  achievementCount: number;
+  comparison: {
+    focusChange: number;
+    sessionChange: number;
+    streakChange: number;
+    moodChange: number | null;
+  };
+  dailyData: { date: string; minutes: number; sessions: number; mood: number | null; energy: number | null; habitCompleted: number }[];
 }
 
 export interface TimelineEvent {
@@ -124,6 +192,13 @@ export interface CoachData {
   weekReflections: number;
   recommendations: string[];
   summary: string;
+  // AI-enhanced fields
+  aiBriefing?: string | null;
+  aiMorningPlan?: string | null;
+  aiNightReview?: string | null;
+  aiProvider?: string;
+  aiModel?: string;
+  coachPersonality?: string;
 }
 
 export interface AchievementProgress {
@@ -313,14 +388,6 @@ export interface BatchActivityInput {
 
 // ─── Desktop Agent types ───
 
-export interface SyncStatusInfo {
-  status: 'idle' | 'syncing' | 'error';
-  pendingCount: number;
-  failedCount: number;
-  lastSyncAt: string | null;
-  lastError: string | null;
-}
-
 export interface DesktopStatus {
   connected: boolean;
   trackingEnabled: boolean;
@@ -329,8 +396,6 @@ export interface DesktopStatus {
   currentActivityType: ActivityType | null;
   idleMinutes: number;
   lastActivityAt: string | null;
-  focusState?: string;
-  syncStatus?: SyncStatusInfo;
 }
 
 export interface DesktopTimelineEntry {
@@ -389,109 +454,86 @@ export interface BehavioralCoachData {
   summary: string;
 }
 
-// ─── MindGuard v5.0 AI Operating System types ───
+export interface UserSettingsData {
+  language: string;
+  timezone: string | null;
+  theme: string;
+  sidebarCollapsed: boolean;
+  compactMode: boolean;
+  defaultFocusDuration: number;
+  focusGoalMinutes: number;
+  autoStartTimer: boolean;
+  showCelebration: boolean;
+  ambientSound: string | null;
+  desktopNotifications: boolean;
+  breakReminders: boolean;
+  missionReminders: boolean;
+  streakReminders: boolean;
+  achievementAlerts: boolean;
+  idleAlerts: boolean;
+  shareStats: boolean;
+  publicProfile: boolean;
+  customShortcuts: Record<string, string> | null;
+  debugMode: boolean;
+  dataExportEnabled: boolean;
+  // AI Coach
+  aiProvider: string;
+  aiApiKey: string | null;
+  aiModel: string | null;
+  aiOllamaUrl: string | null;
+  coachPersonality: string;
+}
 
-export type MemoryType = "habit" | "pattern" | "preference" | "insight" | "summary" | "conversation" | "weekly_report" | "streak" | "distraction_pattern" | "best_hours" | "work_preference";
-export type MemorySource = "reflection" | "session" | "activity" | "achievement" | "ai_generated" | "manual";
+// ─── Device Pairing types ───
 
-export interface MemoryItem {
+export interface DeviceInfo {
   id: string;
-  type: MemoryType;
-  content: string;
-  importance: number;
-  score: number;
-  context?: string;
-  source?: MemorySource;
-  sourceId?: string;
+  deviceName: string | null;
+  deviceType: string;
+  platform: string | null;
+  isActive: boolean;
+  lastSyncAt: string | null;
   createdAt: string;
 }
 
-export interface ConversationMessage {
-  id: string;
-  role: "user" | "assistant" | "system";
-  content: string;
-  timestamp: string;
-  sessionId?: string;
+export interface PairingResponse {
+  pairingToken: string;
+  expiresIn: number;
+  deviceId: string;
 }
 
-export interface ChatRequest {
-  message: string;
-  sessionId?: string;
+export interface PairingStatusResponse {
+  status: "no_pairing" | "pairing_available" | "paired";
+  pairingToken?: string;
 }
 
-export interface MorningBriefing {
-  date: string;
-  priorities: { title: string; reason: string; priority: "high" | "medium" | "low" }[];
-  estimatedFocusScore: number;
-  suggestedWorkBlocks: { start: string; end: string; task: string; type: string }[];
-  suggestedBreaks: { time: string; duration: number; reason: string }[];
-  missionOrdering: { missionId: string; title: string; order: number; reason: string }[];
-  predictedDistractions: { time: string; source: string; suggestion: string }[];
-  motivationalSummary: string;
-  weatherNote: string;
+export interface PairingCompleteResponse {
+  refreshToken: string;
+  accessToken: string;
+  deviceId: string;
+  user: {
+    id: string;
+    email: string;
+    name: string | null;
+    displayName: string | null;
+    onboarded: boolean;
+  };
 }
 
-export interface EveningReview {
-  date: string;
-  productivityGrade: string;
-  gradeScore: number;
-  achievements: string[];
-  biggestWins: { title: string; description: string }[];
-  biggestMistakes: { title: string; description: string }[];
-  distractions: { source: string; minutes: number; suggestion: string }[];
-  lessonsLearned: string[];
-  suggestions: string[];
-  moodAnalysis: { mood: number | null; trend: string; insight: string };
-  reflectionSummary: string;
-  tomorrowRecommendations: string[];
+export interface TokenRefreshResponse {
+  accessToken: string;
 }
 
-export interface PredictionResult {
-  burnoutRisk: { level: "low" | "medium" | "high"; probability: number; factors: string[] };
-  missionCompletionProbability: { missionId: string; title: string; probability: number; factors: string[] }[];
-  focusScoreTomorrow: { predicted: number; confidence: number; factors: string[] };
-  weeklyProductivity: { predictedMinutes: number; confidence: number; trend: "up" | "down" | "stable" };
-  streakRisk: { riskLevel: "low" | "medium" | "high"; daysToBreak: number; suggestion: string };
-  bestWorkHours: { hour: number; confidence: number; productiveMinutes: number }[];
-}
-
-export interface AIRecommendation {
-  id: string;
-  type: "break" | "schedule" | "avoid" | "continue" | "habit" | "health" | "focus";
-  title: string;
-  description: string;
-  urgency: "low" | "medium" | "high";
-  dataBased: boolean;
-  supportingData: string;
-  action: string;
-}
-
-export interface AITimelineEntry {
-  time: string;
-  title: string;
-  description: string;
-  type: string;
-  icon: string;
-  duration?: number;
-  category?: string;
-  nextEntry?: string;
-}
-
-export interface KnowledgeGraphNode {
-  id: string;
-  type: string;
-  label: string;
-  data: Record<string, unknown>;
-}
-
-export interface KnowledgeGraphEdge {
-  source: string;
-  target: string;
-  relation: string;
-  weight: number;
-}
-
-export interface KnowledgeGraph {
-  nodes: KnowledgeGraphNode[];
-  edges: KnowledgeGraphEdge[];
+export interface DeviceSyncResponse {
+  settings: UserSettingsData | null;
+  desktopSettings: DesktopSettingsData | null;
+  activeMissions: { id: string; title: string; description: string | null; status: string; priority: string }[];
+  recentSessions: { id: string; missionId: string | null; duration: number; startedAt: string; quality: number | null }[];
+  user: {
+    id: string;
+    email: string;
+    displayName: string | null;
+    focusGoalMinutes: number | null;
+    preferredFocusDuration: number | null;
+  };
 }

@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { useAppStore } from '@/stores/app-store';
 import { cn } from '@/lib/utils';
+import { shortcutManager } from '@/lib/shortcut-manager';
 import type { AppView } from '@/types';
 
 interface NavCommand {
@@ -142,6 +143,11 @@ export function CommandPalette() {
     };
     document.addEventListener('keydown', handleTab);
     return () => document.removeEventListener('keydown', handleTab);
+  }, [open]);
+
+  // Notify shortcut manager when palette opens/closes
+  useEffect(() => {
+    shortcutManager.setPaletteOpen(open);
   }, [open]);
 
   const handleKeyDown = useCallback(

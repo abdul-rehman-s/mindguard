@@ -20,6 +20,40 @@ model User {
   createdAt     DateTime          @default(now())
   updatedAt     DateTime          @updatedAt
 
+  // Onboarding personalization fields
+  workSchedule      String?    // "morning" | "evening" | "night" | "flexible"
+  preferredFocusDuration Int?  // minutes: 25 | 45 | 60 | 90 | 120
+  biggestDistraction String?    // "tiktok" | "youtube" | "facebook" | "instagram" | "discord" | "gaming" | "netflix" | "phone" | "other"
+  goals             String?    // JSON array: ["deep_work", "screen_time", "habits", ...]
+  distractionsList  String?    // JSON array of specific distraction names
+  focusGoalMinutes  Int?       // daily focus goal in minutes
+  dailyCoachEnabled Boolean @default(true)
+  sidebarCollapsed  Boolean @default(false)
+  commandPaletteUsed Boolean @default(false)
+  lastActiveAt      DateTime?
+
+  // Psychological profiling fields (Task 2-c)
+  chronotype        String?    // "early_bird" | "night_owl" | "flexible" — derived from scheduleType
+  coachPersonality  String?    // "strict" | "friendly" | "data_nerd"
+  motivationStyle   String?    // "gamification" | "minimalist" | "balanced"
+  focusStyle        String?    // "pomodoro" | "deep_work" | "flexible" — derived from workStylePreference
+  hasAdhd           Boolean?   @default(false)
+  role              String?    // "student" | "developer" | "designer" | "freelancer" | etc.
+  wakeTime          String?    // legacy — no longer required in onboarding
+  sleepTime         String?    // now stores sleep range: "before_midnight" | "12_2am" | "2_4am" | "after_4am" | "varies"
+  workHours         Int?       // legacy — no longer required in onboarding
+  pomodoroPreference String?   // derived from focusDurationComfort
+  deepWorkDuration  Int?       // derived from focusDurationComfort
+  preferredSchedule String?    // "structured" | "flexible" — derived from workStylePreference
+  distractionRanking String?   // JSON array of ranked top 3 distractions
+
+  // UX Rebirth raw answer fields — store user's natural answers for AI personalization
+  scheduleType      String?    // "morning_person" | "night_owl" | "flexible_schedule" | "changes_frequently"
+  sleepRange        String?    // "before_midnight" | "12_2am" | "2_4am" | "after_4am" | "varies"
+  focusDurationComfort String? // "15min" | "30min" | "45min" | "about_an_hour" | "90_plus" | "it_depends"
+  workStylePreference String?  // "short_sprints" | "deep_uninterrupted" | "mix_both"
+  otherImproveText  String?    // free-text answer when user selects "Other" in improve step
+
   missions         Mission[]
   focusSessions    FocusSession[]
   reflections      DailyReflection[]
@@ -27,8 +61,11 @@ model User {
   desktopActivities DesktopActivity[]
   desktopSettings   DesktopSettings?
   notifications    Notification[]
-  memories          Memory[]
-  conversations     Conversation[]
+  userSettings      UserSettings?
+  devices          Device[]
+  habits           Habit[]
+  habitEntries     HabitEntry[]
+  pendingPairing   Boolean  @default(false)
 }
 
 model Mission {
@@ -148,36 +185,101 @@ model Notification {
   @@index([userId, read])
 }
 
-model Memory {
-  id          String   @id @default(cuid())
-  userId      String
-  type        String   // "habit" | "pattern" | "preference" | "insight" | "summary" | "conversation" | "weekly_report" | "streak" | "distraction_pattern" | "best_hours" | "work_preference"
-  content     String   // the actual memory text
-  importance  Int      @default(5)  // 1-10 scale
-  score       Float    @default(0)  // relevance/decay score
-  context     String?  // JSON: additional metadata about this memory
-  source      String?  // "reflection" | "session" | "activity" | "achievement" | "ai_generated" | "manual"
-  sourceId    String?  // ID of the source entity
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+model UserSettings {
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  // General
+  language          String   @default("en")
+  timezone          String?
+  // Appearance
+  theme             String   @default("dark")  // "light" | "dark" | "system"
+  sidebarCollapsed  Boolean  @default(false)
+  compactMode       Boolean  @default(false)
+  // Focus
+  defaultFocusDuration Int   @default(25)
+  focusGoalMinutes  Int      @default(120) // daily goal
+  autoStartTimer    Boolean  @default(false)
+  showCelebration   Boolean  @default(true)
+  ambientSound      String?  // "rain" | "classical" | "deep_focus" | null
+  // Notifications
+  desktopNotifications Boolean @default(true)
+  breakReminders    Boolean  @default(true)
+  missionReminders  Boolean @default(true)
+  streakReminders   Boolean @default(true)
+  achievementAlerts Boolean @default(true)
+  idleAlerts        Boolean  @default(true)
+  // Privacy
+  shareStats        Boolean  @default(false)
+  publicProfile     Boolean  @default(false)
+  // Keyboard
+  customShortcuts   String?  // JSON object for custom shortcuts
+  // Advanced
+  debugMode         Boolean  @default(false)
+  dataExportEnabled Boolean  @default(true)
+  // AI Coach
+  aiProvider        String   @default("z-ai")  // "z-ai" | "openai" | "deepseek" | "openrouter" | "gemini" | "anthropic" | "ollama"
+  aiApiKey          String?   // encrypted API key for external providers
+  aiModel           String?   // specific model name (e.g., "gpt-4", "claude-3-opus")
+  aiOllamaUrl       String?   // local Ollama server URL
+  coachPersonality  String   @default("friendly")  // "strict" | "friendly" | "data_nerd"
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId, type])
-  @@index([userId, importance])
-  @@index([userId, createdAt])
 }
 
-model Conversation {
-  id          String   @id @default(cuid())
-  userId      String
-  role        String   // "user" | "assistant" | "system"
-  content     String
-  timestamp   DateTime @default(now())
-  sessionId   String?  // groups messages in same conversation session
+model Device {
+  id              String   @id @default(cuid())
+  userId          String
+  deviceName      String?   // "MacBook Pro" etc
+  deviceType      String    @default("desktop")  // "desktop" | "mobile" | "web"
+  platform        String?   // "mac" | "win" | "linux"
+  pairingToken    String?   @unique  // short-lived JWT for initial pairing
+  pairingExpiry   DateTime? // when pairing token expires
+  refreshToken    String?   // encrypted refresh token
+  lastSyncAt      DateTime? @default(now())
+  isActive        Boolean   @default(true)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([userId, sessionId])
-  @@index([userId, timestamp])
+  @@index([userId])
+  @@index([pairingToken])
+  @@index([userId, isActive])
+}
+
+model Habit {
+  id          String   @id @default(cuid())
+  userId      String
+  name        String
+  description String?
+  icon        String?    // emoji or icon name
+  frequency   String     @default("daily")  // "daily" | "weekly" | "custom"
+  targetCount Int        @default(1)          // how many times per frequency period
+  color       String?    // hex color for visualization
+  isActive    Boolean    @default(true)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  entries HabitEntry[]
+
+  @@index([userId, isActive])
+}
+
+model HabitEntry {
+  id        String   @id @default(cuid())
+  habitId   String
+  userId    String
+  date      String    // "YYYY-MM-DD"
+  count     Int       @default(1)
+  note      String?
+  createdAt DateTime  @default(now())
+
+  habit Habit @relation(fields: [habitId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([habitId, date])
+  @@index([userId, date])
 }

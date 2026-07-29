@@ -6,6 +6,7 @@ import { logError } from '@/lib/logger';
 import {
   format,
   startOfDay,
+  subDays,
 } from 'date-fns';
 
 // Achievement catalog with metadata and XP rewards (50-500 range)
@@ -86,7 +87,7 @@ export async function GET() {
   const userId = userIdOr401;
 
   try {
-    const _now = new Date();
+    const now = new Date();
 
     const [
       allSessions,
@@ -157,7 +158,7 @@ export async function GET() {
     // Special pattern checks
     let nightOwlFound = false;
     let earlyBirdFound = false;
-    let _deepWorkerFound = false;
+    let deepWorkerFound = false;
     let longestSingleSessionMinutes = 0;
 
     for (const s of allSessions) {
@@ -175,7 +176,7 @@ export async function GET() {
         earlyBirdFound = true;
       }
       if (sessionMinutes >= 90) {
-        _deepWorkerFound = true;
+        deepWorkerFound = true;
       }
     }
 

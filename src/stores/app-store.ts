@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { AppView, DashboardStats, WeeklyData, FocusModeState, CoachData, WeeklyWrapped, LifeDashboardData, DailyReviewData, NotificationItem, DesktopStatus, DesktopSettingsData, ProductivityMetrics, BehavioralCoachData, DesktopTimelineEntry, ConversationMessage, MorningBriefing, EveningReview, PredictionResult, AIRecommendation, AITimelineEntry, MemoryItem } from "@/types";
+import type { AppView, DashboardStats, WeeklyData, FocusModeState, OnboardingData, CoachData, WeeklyWrapped, LifeDashboardData, DailyReviewData, NotificationItem, DesktopStatus, DesktopSettingsData, ProductivityMetrics, BehavioralCoachData, DesktopTimelineEntry } from "@/types";
 import type { Mission, FocusSession, DailyReflection, Achievement } from "@prisma/client";
 
 export type SafeUser = {
@@ -38,6 +38,9 @@ interface AppState {
 
   sidebarOpen: boolean;
   setSidebarOpen: (open: boolean) => void;
+
+  sidebarCollapsed: boolean;
+  setSidebarCollapsed: (collapsed: boolean) => void;
 
   focusMode: FocusModeState;
   setFocusMode: (mode: FocusModeState) => void;
@@ -79,24 +82,6 @@ interface AppState {
   setProductivityMetrics: (m: ProductivityMetrics | null) => void;
   behavioralCoach: BehavioralCoachData | null;
   setBehavioralCoach: (c: BehavioralCoachData | null) => void;
-
-  // AI Assistant state
-  assistantView: 'chat' | 'plan' | 'review' | 'predictions' | 'recommendations' | 'timeline' | 'memories';
-  setAssistantView: (view: 'chat' | 'plan' | 'review' | 'predictions' | 'recommendations' | 'timeline' | 'memories') => void;
-  conversationHistory: ConversationMessage[];
-  setConversationHistory: (messages: ConversationMessage[]) => void;
-  morningBriefing: MorningBriefing | null;
-  setMorningBriefing: (b: MorningBriefing | null) => void;
-  eveningReview: EveningReview | null;
-  setEveningReview: (r: EveningReview | null) => void;
-  predictions: PredictionResult | null;
-  setPredictions: (p: PredictionResult | null) => void;
-  aiRecommendations: AIRecommendation[];
-  setAIRecommendations: (r: AIRecommendation[]) => void;
-  aiTimeline: AITimelineEntry[];
-  setAITimeline: (t: AITimelineEntry[]) => void;
-  memories: MemoryItem[];
-  setMemories: (m: MemoryItem[]) => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -128,6 +113,9 @@ export const useAppStore = create<AppState>((set) => ({
 
   sidebarOpen: true,
   setSidebarOpen: (sidebarOpen) => set({ sidebarOpen }),
+
+  sidebarCollapsed: false,
+  setSidebarCollapsed: (sidebarCollapsed) => set({ sidebarCollapsed }),
 
   focusMode: "idle",
   setFocusMode: (focusMode) => set({ focusMode }),
@@ -169,21 +157,4 @@ export const useAppStore = create<AppState>((set) => ({
   behavioralCoach: null,
   setBehavioralCoach: (behavioralCoach) => set({ behavioralCoach }),
 
-  // AI Assistant state
-  assistantView: 'chat',
-  setAssistantView: (assistantView) => set({ assistantView }),
-  conversationHistory: [],
-  setConversationHistory: (conversationHistory) => set({ conversationHistory }),
-  morningBriefing: null,
-  setMorningBriefing: (morningBriefing) => set({ morningBriefing }),
-  eveningReview: null,
-  setEveningReview: (eveningReview) => set({ eveningReview }),
-  predictions: null,
-  setPredictions: (predictions) => set({ predictions }),
-  aiRecommendations: [],
-  setAIRecommendations: (aiRecommendations) => set({ aiRecommendations }),
-  aiTimeline: [],
-  setAITimeline: (aiTimeline) => set({ aiTimeline }),
-  memories: [],
-  setMemories: (memories) => set({ memories }),
 }));

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getAuthUserId } from '@/lib/auth-utils';
 import { db } from '@/lib/db';
 import { logError } from '@/lib/logger';
+import { format } from 'date-fns';
 
 type TimelineEvent = {
   id: string;
@@ -97,7 +98,7 @@ export async function GET() {
         subtitle: isBreak
           ? 'Recharge'
           : `${Math.round(s.duration / 60)} min`,
-        time: s.endedAt.toISOString(),
+        time: (s.endedAt ?? s.startedAt).toISOString(),
         minutes: s.duration,
         group: '',
       });
@@ -133,7 +134,7 @@ export async function GET() {
         type: 'mission_completed',
         title: m.title,
         subtitle: 'Completed',
-        time: (m.completedAt || m.updatedAt).toISOString(),
+        time: (m.completedAt ?? m.updatedAt ?? new Date()).toISOString(),
         group: '',
       });
     }

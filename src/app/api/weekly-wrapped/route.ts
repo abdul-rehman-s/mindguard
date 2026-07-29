@@ -8,6 +8,7 @@ import {
   startOfWeek,
   endOfWeek,
   subDays,
+  startOfDay,
   differenceInCalendarDays,
   eachDayOfInterval,
 } from 'date-fns';
@@ -95,12 +96,10 @@ export async function GET() {
     const lastWeekHours = Math.round((lastWeekMinutes / 60 / 60) * 10) / 10;
 
     // Deepest session (longest single session this week)
-    const deepest = thisWeekSessions.length > 0
-      ? thisWeekSessions.reduce(
-          (best, s) => (s.duration > best.duration ? s : best),
-          thisWeekSessions[0]
-        )
-      : undefined;
+    const deepest = thisWeekSessions.reduce(
+      (best, s) => (s.duration > best.duration ? s : best),
+      thisWeekSessions[0] as (typeof thisWeekSessions)[number] | undefined
+    );
     const deepestSession = deepest
       ? {
           duration: Math.round(deepest.duration / 60),
@@ -122,13 +121,11 @@ export async function GET() {
         sessions: sessions.length,
       };
     });
-    const bestDay = dayAgg.length > 0
-      ? dayAgg.reduce(
-          (best, d) => (d.minutes > best.minutes ? d : best),
-          dayAgg[0]
-        )
-      : undefined;
-    const _bestDayPayload = bestDay
+    const bestDay = dayAgg.reduce(
+      (best, d) => (d.minutes > best.minutes ? d : best),
+      dayAgg[0] as (typeof dayAgg)[number] | undefined
+    );
+    const bestDayPayload = bestDay
       ? { day: bestDay.dayLabel, minutes: bestDay.minutes, sessions: bestDay.sessions }
       : null;
 

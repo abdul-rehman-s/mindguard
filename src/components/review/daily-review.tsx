@@ -6,11 +6,14 @@ import {
   CalendarCheck,
   Target,
   Clock,
+  Brain,
   Laptop,
   Eye,
   Trophy,
+  Zap,
   Lightbulb,
   BookOpen,
+  Loader2,
   AlertCircle,
   Award,
   type LucideIcon,
@@ -21,6 +24,7 @@ import { Badge } from '@/components/ui/badge';
 import { AnimatedNumber } from '@/components/premium/animated-number';
 import { useAppStore } from '@/stores/app-store';
 import { cn, formatDateDisplay } from '@/lib/utils';
+import { fadeInUp } from '@/lib/animations';
 import type { DailyReviewData } from '@/types';
 
 const SectionCard = React.memo(function SectionCard({ icon: Icon, title, children, delay = 0, className }: { icon: LucideIcon; title: string; children: React.ReactNode; delay?: number; className?: string }) {

@@ -44,6 +44,27 @@ const EMOJI_FALLBACK: Record<string, string> = {
   mission_master: '👑',
 };
 
+// ─── Achievement Category Definitions ───
+type AchievementCategory = 'focus' | 'consistency' | 'reflection' | 'milestones';
+
+const CATEGORIES: Record<AchievementCategory, { label: string; icon: LucideIcon; color: string }> = {
+  focus: { label: 'Focus', icon: Brain, color: 'text-emerald-400' },
+  consistency: { label: 'Consistency', icon: Flame, color: 'text-amber-400' },
+  reflection: { label: 'Reflection', icon: Sunrise, color: 'text-violet-400' },
+  milestones: { label: 'Milestones', icon: Trophy, color: 'text-yellow-400' },
+};
+
+const ACHIEVEMENT_CATEGORY_MAP: Record<string, AchievementCategory> = {
+  first_focus: 'focus',
+  deep_worker: 'focus',
+  streak_7: 'consistency',
+  streak_30: 'consistency',
+  hours_100: 'milestones',
+  night_owl: 'reflection',
+  early_bird: 'reflection',
+  mission_master: 'milestones',
+};
+
 // ---- Achievement Card (React.memo) ----
 const AchievementCard = React.memo(function AchievementCard({
   ach,
@@ -269,11 +290,41 @@ export function AchievementsV2() {
           </span>
         </div>
 
-        <div className="space-y-2 max-h-96 overflow-y-auto" aria-label="Achievements list">
-          {achievements.map((ach, i) => (
-            <AchievementCard key={ach.type} ach={ach} index={i} />
-          ))}
-        </div>
+        {/* Group achievements by category */}
+        {(() => {
+          const grouped = new Map<AchievementCategory, AchievementProgress[]>();
+          for (const ach of achievements) {
+            const cat = ACHIEVEMENT_CATEGORY_MAP[ach.type] || 'milestones';
+            if (!grouped.has(cat)) grouped.set(cat, []);
+            grouped.get(cat)!.push(ach);
+          }
+          const catOrder: AchievementCategory[] = ['focus', 'consistency', 'reflection', 'milestones'];
+          return catOrder.map(cat => {
+            const catAchievements = grouped.get(cat);
+            if (!catAchievements || catAchievements.length === 0) return null;
+            const catDef = CATEGORIES[cat];
+            const CatIcon = catDef.icon;
+            return (
+              <div key={cat} className="mb-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <CatIcon className={cn('h-3 w-3', catDef.color)} aria-hidden="true" />
+                  <span className="text-[10px] font-semibold uppercase tracking-widest text-zinc-500">
+                    {catDef.label}
+                  </span>
+                  <div className="flex-1 h-px bg-white/[0.04]" aria-hidden="true" />
+                  <span className="text-[9px] tabular-nums text-zinc-600">
+                    {catAchievements.filter(a => a.unlocked).length}/{catAchievements.length}
+                  </span>
+                </div>
+                <div className="space-y-2" aria-label={`${catDef.label} achievements`}>
+                  {catAchievements.map((ach, i) => (
+                    <AchievementCard key={ach.type} ach={ach} index={i} />
+                  ))}
+                </div>
+              </div>
+            );
+          });
+        })()}
       </div>
     </motion.div>
   );

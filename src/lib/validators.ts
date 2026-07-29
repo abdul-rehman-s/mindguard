@@ -44,6 +44,8 @@ export const createReflectionSchema = z.object({
     .string()
     .min(1, "This field is required")
     .max(500),
+  mood: z.number().int().min(1).max(5).optional(),
+  energy: z.number().int().min(1).max(5).optional(),
 });
 
 export const updateSettingsSchema = z.object({
@@ -83,6 +85,36 @@ export const desktopSettingsSchema = z.object({
   trackerInterval: z.number().int().min(5).max(120).optional(),
 });
 
+export const userSettingsSchema = z.object({
+  language: z.string().max(10).optional(),
+  timezone: z.string().max(50).nullable().optional(),
+  theme: z.enum(["light", "dark", "system"]).optional(),
+  sidebarCollapsed: z.boolean().optional(),
+  compactMode: z.boolean().optional(),
+  defaultFocusDuration: z.number().int().min(5).max(120).optional(),
+  focusGoalMinutes: z.number().int().min(5).max(720).optional(),
+  autoStartTimer: z.boolean().optional(),
+  showCelebration: z.boolean().optional(),
+  ambientSound: z.enum(["rain", "classical", "deep_focus", "white_noise", "nature"]).nullable().optional(),
+  desktopNotifications: z.boolean().optional(),
+  breakReminders: z.boolean().optional(),
+  missionReminders: z.boolean().optional(),
+  streakReminders: z.boolean().optional(),
+  achievementAlerts: z.boolean().optional(),
+  idleAlerts: z.boolean().optional(),
+  shareStats: z.boolean().optional(),
+  publicProfile: z.boolean().optional(),
+  customShortcuts: z.record(z.string(), z.string()).nullable().optional(),
+  debugMode: z.boolean().optional(),
+  dataExportEnabled: z.boolean().optional(),
+  // AI Coach
+  aiProvider: z.enum(["z-ai", "openai", "deepseek", "openrouter", "gemini", "anthropic", "ollama"]).optional(),
+  aiApiKey: z.string().max(500).nullable().optional(),
+  aiModel: z.string().max(100).nullable().optional(),
+  aiOllamaUrl: z.string().max(200).nullable().optional(),
+  coachPersonality: z.enum(["strict", "friendly", "data_nerd"]).optional(),
+});
+
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
 export type CreateMissionInputValidated = z.infer<typeof createMissionSchema>;
@@ -92,17 +124,26 @@ export type CreateReflectionInputValidated = z.infer<typeof createReflectionSche
 export type UpdateSettingsInputValidated = z.infer<typeof updateSettingsSchema>;
 export type BatchActivitiesInputValidated = z.infer<typeof batchActivitiesSchema>;
 export type DesktopSettingsInputValidated = z.infer<typeof desktopSettingsSchema>;
+export type UserSettingsInputValidated = z.infer<typeof userSettingsSchema>;
 
-export const chatMessageSchema = z.object({
-  message: z.string().min(1, "Message is required").max(2000, "Message is too long"),
-  sessionId: z.string().optional(),
+// ─── Device Pairing & Auth ───
+
+export const devicePairSchema = z.object({
+  deviceName: z.string().max(100).optional(),
+  deviceType: z.enum(["desktop", "mobile", "web"]).default("desktop"),
+  platform: z.enum(["mac", "win", "linux"]).optional(),
 });
 
-export const createMemorySchema = z.object({
-  type: z.enum(['habit', 'pattern', 'preference', 'insight', 'summary', 'conversation', 'weekly_report', 'streak', 'distraction_pattern', 'best_hours', 'work_preference', 'manual']).optional(),
-  content: z.string().min(1, "Content is required").max(2000, "Content is too long"),
-  importance: z.number().int().min(1).max(10).optional(),
+export const devicePairCompleteSchema = z.object({
+  pairingToken: z.string().min(1, "Pairing token is required"),
+  deviceName: z.string().max(100).optional(),
+  platform: z.enum(["mac", "win", "linux"]).optional(),
 });
 
-export type ChatMessageInputValidated = z.infer<typeof chatMessageSchema>;
-export type CreateMemoryInputValidated = z.infer<typeof createMemorySchema>;
+export const deviceRefreshSchema = z.object({
+  refreshToken: z.string().min(1, "Refresh token is required"),
+});
+
+export type DevicePairInputValidated = z.infer<typeof devicePairSchema>;
+export type DevicePairCompleteInputValidated = z.infer<typeof devicePairCompleteSchema>;
+export type DeviceRefreshInputValidated = z.infer<typeof deviceRefreshSchema>;

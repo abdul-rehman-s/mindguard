@@ -60,7 +60,7 @@ export const authOptions: NextAuthOptions = {
   pages: {
     signIn: "/",
   },
-  secret: process.env.NEXTAUTH_SECRET,
+  secret: process.env.NEXTAUTH_SECRET || "mindguard-secret-key-production-2025-a7f3e9b1c4d8", // MUST be stable across restarts — check .env
 };
 
 export async function hashPassword(password: string): Promise<string> {

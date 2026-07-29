@@ -53,6 +53,8 @@ export async function POST(request: NextRequest) {
           distraction: validated.distraction,
           wentWell: validated.wentWell,
           tomorrowMission: validated.tomorrowMission,
+          mood: validated.mood ?? undefined,
+          energy: validated.energy ?? undefined,
         },
       });
     } else {
@@ -63,6 +65,8 @@ export async function POST(request: NextRequest) {
           distraction: validated.distraction,
           wentWell: validated.wentWell,
           tomorrowMission: validated.tomorrowMission,
+          mood: validated.mood ?? undefined,
+          energy: validated.energy ?? undefined,
         },
       });
     }
