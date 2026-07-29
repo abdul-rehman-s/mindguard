@@ -623,6 +623,62 @@
   color: white;
 }
 
+/* ──── Landing page scroll-smooth ──── */
+html {
+  scroll-behavior: smooth;
+}
+
+/* ──── Cinematic hero depth ──── */
+.cinematic-depth {
+  perspective: 1200px;
+  transform-style: preserve-3d;
+}
+
+/* ──── Premium glow line ──── */
+.glow-line {
+  position: relative;
+}
+.glow-line::after {
+  content: "";
+  position: absolute;
+  bottom: -4px;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(16,185,129,0.3), transparent);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+.glow-line:hover::after {
+  opacity: 1;
+}
+
+/* ──── Ambient glow pulse for hero ──── */
+@keyframes ambient-pulse {
+  0%, 100% {
+    opacity: 0.3;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.6;
+    transform: scale(1.02);
+  }
+}
+
+.animate-ambient-pulse {
+  animation: ambient-pulse 4s ease-in-out infinite;
+}
+
+/* ──── Scroll indicator fade ──── */
+@keyframes scroll-fade {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 0.8; }
+}
+
+.animate-scroll-fade {
+  animation: scroll-fade 2s ease-in-out infinite;
+}
+
 /* ──── Smooth page transitions ──── */
 .page-transition-enter {
   opacity: 0;
