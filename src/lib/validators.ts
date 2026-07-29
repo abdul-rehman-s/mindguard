@@ -1,17 +1,17 @@
 import { z } from "zod";
 
 export const registerSchema = z.object({
-  email: z.string().email("Please enter a valid email address"),
-  name: z.string().min(2, "Name must be at least 2 characters").max(50),
+  email: z.string().email("That email doesn't look right. Double-check it?"),
+  name: z.string().min(2, "We'd love to know your name — at least 2 characters.").max(50),
   password: z
     .string()
-    .min(8, "Password must be at least 8 characters")
+    .min(8, "Your password needs at least 8 characters. Make it something you'll remember.")
     .max(100),
 });
 
 export const loginSchema = z.object({
-  email: z.string().email("Please enter a valid email address"),
-  password: z.string().min(1, "Password is required"),
+  email: z.string().email("That email doesn't look right. Double-check it?"),
+  password: z.string().min(1, "You'll need to enter your password."),
 });
 
 export const createMissionSchema = z.object({

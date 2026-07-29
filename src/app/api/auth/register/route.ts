@@ -21,7 +21,7 @@ export async function POST(request: Request) {
 
     if (existing) {
       return NextResponse.json(
-        { error: "An account with this email already exists" },
+        { error: "Looks like you've already joined MindGuard. Try signing in instead." },
         { status: 409 }
       );
     }
@@ -49,7 +49,7 @@ export async function POST(request: Request) {
   } catch (error: unknown) {
     if (error && typeof error === "object" && "issues" in error) {
       return NextResponse.json(
-        { error: "Validation failed", details: (error as { issues: Array<{ message: string }> }).issues },
+        { error: "Something doesn't look right. Please check your information and try again.", details: (error as { issues: Array<{ message: string }> }).issues },
         { status: 400 }
       );
     }

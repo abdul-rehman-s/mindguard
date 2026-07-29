@@ -181,9 +181,16 @@ export default function HomePage() {
   if (!mounted || status === 'loading') {
     return (
       <div className="flex min-h-screen items-center justify-center bg-zinc-950">
-        <div className="flex flex-col items-center gap-4">
+        {/* Background glow */}
+        <div className="pointer-events-none fixed inset-0 z-0">
+          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-[500px] w-[500px] rounded-full bg-emerald-500/[0.04] blur-[120px]" />
+        </div>
+        <div className="relative z-10 flex flex-col items-center gap-5">
           <MindGuardSplashLogo />
-          <Loader2 className="h-4 w-4 animate-spin text-zinc-500" />
+          <div className="flex items-center gap-2">
+            <Loader2 className="h-4 w-4 animate-spin text-emerald-400/60" />
+            <span className="text-sm text-zinc-500">Preparing your workspace…</span>
+          </div>
         </div>
       </div>
     );
