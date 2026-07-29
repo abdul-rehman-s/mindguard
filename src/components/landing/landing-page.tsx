@@ -225,21 +225,21 @@ export function LandingPage() {
         {/* Radial vignette */}
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,rgba(9,9,11,0.4)_70%)]" />
 
-        {/* Animated gradient background */}
+        {/* Animated gradient background — slower, calmer */}
         <motion.div
           className="absolute inset-0"
           animate={{
             background: [
-              'radial-gradient(ellipse at 30% 20%, rgba(16,185,129,0.08) 0%, transparent 50%)',
-              'radial-gradient(ellipse at 50% 40%, rgba(16,185,129,0.06) 0%, transparent 50%)',
-              'radial-gradient(ellipse at 70% 30%, rgba(20,184,166,0.07) 0%, transparent 50%)',
-              'radial-gradient(ellipse at 40% 50%, rgba(16,185,129,0.08) 0%, transparent 50%)',
+              'radial-gradient(ellipse at 30% 20%, rgba(16,185,129,0.06) 0%, transparent 50%)',
+              'radial-gradient(ellipse at 50% 40%, rgba(16,185,129,0.04) 0%, transparent 50%)',
+              'radial-gradient(ellipse at 70% 30%, rgba(20,184,166,0.05) 0%, transparent 50%)',
+              'radial-gradient(ellipse at 40% 50%, rgba(16,185,129,0.06) 0%, transparent 50%)',
             ],
           }}
-          transition={{ duration: 20, repeat: Infinity, ease: 'linear' }}
+          transition={{ duration: 25, repeat: Infinity, ease: 'linear' }}
         />
 
-        {/* Ambient floating orbs */}
+        {/* Ambient floating orbs — slower, more meditative */}
         {ambientOrbs.map((orb, i) => (
           <motion.div
             key={i}
@@ -252,8 +252,8 @@ export function LandingPage() {
               background: `rgba(16,185,129,${orb.opacity})`,
               filter: 'blur(180px)',
             }}
-            animate={{ opacity: [0.4, 0.7, 0.4], scale: [1, 1.05, 1] }}
-            transition={{ duration: 8 + i * 2, repeat: Infinity, ease: 'easeInOut', delay: i * 2 }}
+            animate={{ opacity: [0.3, 0.6, 0.3], scale: [1, 1.03, 1] }}
+            transition={{ duration: 12 + i * 3, repeat: Infinity, ease: 'easeInOut', delay: i * 2 }}
           />
         ))}
       </div>
@@ -295,10 +295,10 @@ export function LandingPage() {
               ))}
             </div>
 
-            {/* CTA */}
+            {/* CTA — conversational copy */}
             <Button
               size="sm"
-              className="hidden md:flex cursor-pointer rounded-lg bg-emerald-500/15 text-emerald-400 ring-1 ring-emerald-500/20 hover:bg-emerald-500/25 hover:text-emerald-300 text-sm font-medium border-0 shadow-none transition-all"
+              className="hidden md:flex cursor-pointer rounded-lg bg-gradient-to-b from-emerald-500 to-emerald-600 text-white ring-1 ring-emerald-500/20 hover:from-emerald-400 hover:to-emerald-500 text-sm font-semibold border-0 shadow-lg shadow-emerald-500/15 transition-all"
               onClick={() => scrollToSection('auth-section')}
             >
               Get Started Free
@@ -328,7 +328,7 @@ export function LandingPage() {
               {/* ── Hero Text Column ── */}
               <div className="flex-1 text-center lg:text-left lg:max-w-[560px]">
                 {/* Announcement badge */}
-                <motion.div variants={heroItem} className="mb-5">
+                <motion.div variants={heroItem} className="mb-6">
                   <Badge
                     className="cursor-default gap-2 rounded-full border-emerald-500/20 bg-emerald-500/[0.07] px-3.5 py-1.5 text-xs font-medium text-emerald-400 ring-1 ring-emerald-500/10 hover:bg-emerald-500/[0.09]"
                   >
@@ -340,30 +340,30 @@ export function LandingPage() {
                   </Badge>
                 </motion.div>
 
-                {/* Main headline */}
+                {/* Main headline — more emotional, conversational */}
                 <motion.h1
                   variants={heroItem}
                   className="mb-5 text-[2.5rem] font-extrabold leading-[1.08] tracking-tight text-zinc-50 sm:text-[3.5rem] lg:text-[4rem]"
                 >
-                  Protect Your{' '}
-                  <span className="gradient-text">Attention.</span>
+                  Your focus deserves{' '}
+                  <span className="gradient-text">a coach.</span>
                   <br />
-                  <span className="text-zinc-200">Build Your Future.</span>
+                  <span className="text-zinc-200">Not another app.</span>
                 </motion.h1>
 
-                {/* Subtitle */}
+                {/* Subtitle — conversational, not marketing-y */}
                 <motion.p
                   variants={heroItem}
                   className="mb-8 text-[1rem] leading-[1.7] text-zinc-400 sm:text-[1.1rem]"
                 >
-                  MindGuard learns how you work, what distracts you, and when you&apos;re at your best — then coaches you accordingly. Not another productivity app. An AI coach that actually understands you.
+                  MindGuard learns how you work, what breaks your focus, and when you&apos;re at your best — then coaches you to do more of what works. It&apos;s like having a personal productivity partner.
                 </motion.p>
 
-                {/* CTA buttons */}
+                {/* CTA buttons — more conversational */}
                 <motion.div variants={heroItem} className="flex flex-col gap-3 sm:flex-row sm:gap-4 justify-center lg:justify-start">
                   <Button
                     size="lg"
-                    className="btn-glow cursor-pointer group h-11 rounded-xl bg-emerald-500 px-6 text-sm font-semibold text-white shadow-lg shadow-emerald-500/20 transition-all hover:bg-emerald-600 hover:shadow-xl hover:shadow-emerald-500/25"
+                    className="cursor-pointer group h-11 rounded-xl bg-gradient-to-b from-emerald-500 to-emerald-600 px-6 text-sm font-semibold text-white shadow-lg shadow-emerald-500/20 transition-all hover:from-emerald-400 hover:to-emerald-500 hover:shadow-xl hover:shadow-emerald-500/25"
                     onClick={() => scrollToSection('auth-section')}
                   >
                     Let&apos;s get started
@@ -379,7 +379,7 @@ export function LandingPage() {
                   </Button>
                 </motion.div>
 
-                {/* Trust indicators */}
+                {/* Trust indicators — more prominent */}
                 <motion.div variants={heroItem} className="flex items-center gap-4 mt-6 justify-center lg:justify-start">
                   <div className="flex items-center gap-1.5">
                     {Array.from({ length: 5 }).map((_, i) => (
@@ -568,7 +568,7 @@ export function LandingPage() {
                         className={cn(
                           'w-full rounded-xl h-10 text-sm font-semibold transition-all cursor-pointer',
                           tier.highlighted
-                            ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20 hover:bg-emerald-600 hover:shadow-xl'
+                            ? 'bg-gradient-to-b from-emerald-500 to-emerald-600 text-white shadow-lg shadow-emerald-500/20 hover:from-emerald-400 hover:to-emerald-500 hover:shadow-xl'
                             : 'bg-zinc-800/50 text-zinc-300 border border-zinc-700/30 shadow-none hover:bg-zinc-800/70 hover:text-zinc-200',
                         )}
                         onClick={() => scrollToSection('auth-section')}
@@ -687,7 +687,7 @@ export function LandingPage() {
                   <div className="flex flex-col gap-3 sm:flex-row sm:gap-4 justify-center">
                     <Button
                       size="lg"
-                      className="btn-glow pulse-glow cursor-pointer group h-12 rounded-xl bg-emerald-500 px-8 text-base font-semibold text-white shadow-xl shadow-emerald-500/25 transition-all hover:bg-emerald-600 hover:shadow-2xl hover:shadow-emerald-500/30"
+                      className="pulse-glow cursor-pointer group h-12 rounded-xl bg-gradient-to-b from-emerald-500 to-emerald-600 px-8 text-base font-semibold text-white shadow-xl shadow-emerald-500/25 transition-all hover:from-emerald-400 hover:to-emerald-500 hover:shadow-2xl hover:shadow-emerald-500/30"
                       onClick={() => scrollToSection('auth-section')}
                     >
                       Let&apos;s get started

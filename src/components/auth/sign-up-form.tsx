@@ -3,13 +3,13 @@
 import { useState } from 'react';
 import { signIn } from 'next-auth/react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowRight, Shield } from 'lucide-react';
-import { registerSchema, loginSchema } from '@/lib/validators';
-import { AuthCard, AuthHeader, AuthDivider, AuthSuccessOverlay } from './auth-shared';
+import { ArrowRight, Sparkles } from 'lucide-react';
+import { registerSchema } from '@/lib/validators';
+import { AuthCard, AuthHeader, AuthDivider, AuthSuccessOverlay, TrustBadge } from './auth-shared';
 import { AuthField } from './auth-field';
 import { AuthButton, AuthLink } from './auth-button';
 import { OAuthButtons } from './oauth-buttons';
-import { cardEntrance } from './auth-animations';
+import { cardEntrance, signUpLoadingMessages } from './auth-animations';
 
 interface SignUpFormProps {
   onSwitchToSignIn: () => void;
@@ -17,7 +17,7 @@ interface SignUpFormProps {
   onSuccess: () => void;
 }
 
-/** Human-friendly error messages */
+/** Human-friendly error messages — never blame the user, always provide recovery */
 function humanizeError(error: string): string {
   if (error.toLowerCase().includes('email') && error.toLowerCase().includes('already')) {
     return 'Looks like you\'ve already joined MindGuard. Try signing in instead.';
@@ -75,7 +75,7 @@ export function SignUpForm({ onSwitchToSignIn, onForgotPassword, onSuccess }: Si
       }
 
       setAuthSuccess(true);
-      setTimeout(onSuccess, 800);
+      setTimeout(onSuccess, 1200);
     } catch (err: unknown) {
       setAuthSuccess(false);
       if (err instanceof Error) {
@@ -88,23 +88,27 @@ export function SignUpForm({ onSwitchToSignIn, onForgotPassword, onSuccess }: Si
     }
   };
 
+  const oAuthAvailable = typeof window !== 'undefined' &&
+    (process.env.NEXT_PUBLIC_GOOGLE_OAUTH === 'true' || process.env.NEXT_PUBLIC_GITHUB_OAUTH === 'true');
+
   return (
     <motion.div variants={cardEntrance} initial="hidden" animate="visible" className="w-full max-w-[420px]">
       <AuthCard>
         <AuthSuccessOverlay
           show={authSuccess}
           message="Welcome aboard!"
-          subtext="Getting everything ready for you\u2026"
+          subtext="Getting your coach ready\u2026"
         />
 
         <AuthHeader
           title="Let's get started"
           subtitle="Create your account and meet your AI coach. It only takes a moment."
+          icon={Sparkles}
         />
 
-        {/* OAuth buttons */}
+        {/* OAuth buttons — only shown when configured */}
         <OAuthButtons mode="signup" />
-        <AuthDivider />
+        {oAuthAvailable && <AuthDivider />}
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
@@ -144,7 +148,7 @@ export function SignUpForm({ onSwitchToSignIn, onForgotPassword, onSuccess }: Si
             required
           />
 
-          {/* Global error */}
+          {/* Global error — softer, more encouraging */}
           <AnimatePresence>
             {error && (
               <motion.div
@@ -160,23 +164,20 @@ export function SignUpForm({ onSwitchToSignIn, onForgotPassword, onSuccess }: Si
             )}
           </AnimatePresence>
 
-          <AuthButton loading={loading} type="submit">
-            Continue
+          <AuthButton loading={loading} type="submit" loadingMessages={signUpLoadingMessages}>
+            Create your account
             <ArrowRight className="ml-2 h-4 w-4" />
           </AuthButton>
         </form>
 
         {/* Footer */}
-        <div className="mt-6 flex items-center justify-center gap-1 text-sm">
+        <div className="mt-6 flex items-center justify-center gap-1.5 text-sm">
           <span className="text-zinc-500">Already have an account?</span>
           <AuthLink onClick={onSwitchToSignIn}>Sign in</AuthLink>
         </div>
 
-        {/* Privacy note */}
-        <div className="mt-4 flex items-center justify-center gap-1.5">
-          <Shield className="h-3 w-3 text-zinc-600" />
-          <span className="text-[11px] text-zinc-600">Your data stays private. Always.</span>
-        </div>
+        {/* Trust badge */}
+        <TrustBadge />
       </AuthCard>
     </motion.div>
   );

@@ -1,10 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Eye, EyeOff } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { getPasswordStrength, strengthConfig, fieldEntrance, errorEntrance } from './auth-animations';
 
@@ -41,33 +40,64 @@ export function AuthField({
 }: AuthFieldProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [touched, setTouched] = useState(false);
+  const [focused, setFocused] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
   const inputType = showPasswordToggle ? (showPassword ? 'text' : 'password') : type;
 
   const strength = showStrength ? getPasswordStrength(value) : null;
   const config = strength ? strengthConfig[strength] : null;
 
+  const isFloating = focused || value.length > 0;
+
+  // Auto-focus handling
+  useEffect(() => {
+    if (autoFocus && inputRef.current) {
+      // Small delay to allow animation to complete
+      const timer = setTimeout(() => {
+        inputRef.current?.focus();
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [autoFocus]);
+
   return (
     <motion.div variants={fieldEntrance} initial="hidden" animate="visible" exit="hidden" className="space-y-1.5">
-      <Label htmlFor={id} className="text-xs font-medium text-zinc-400">
-        {label}
-      </Label>
       <div className="relative">
+        {/* Floating label */}
+        <motion.label
+          htmlFor={id}
+          className={cn(
+            'absolute left-3.5 z-10 pointer-events-none origin-left font-medium transition-colors duration-200',
+            isFloating
+              ? 'top-1.5 text-[11px] text-emerald-400/80'
+              : 'top-3 text-sm text-zinc-500',
+          )}
+        >
+          {label}
+          {required && <span className="text-emerald-400/50 ml-0.5">*</span>}
+        </motion.label>
+
         <Input
+          ref={inputRef}
           id={id}
           type={inputType}
-          placeholder={placeholder}
+          placeholder={isFloating ? placeholder : ''}
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          onBlur={() => setTouched(true)}
+          onBlur={() => { setTouched(true); setFocused(false); }}
+          onFocus={() => setFocused(true)}
           required={required}
           autoComplete={autoComplete}
-          autoFocus={autoFocus}
           className={cn(
-            'h-11 rounded-xl border-zinc-800/50 bg-zinc-800/30 text-zinc-200 placeholder:text-zinc-600 transition-all duration-200',
-            'focus-visible:border-emerald-500/50 focus-visible:ring-emerald-500/20',
-            error && touched && 'border-red-500/40 focus-visible:border-red-500/50 focus-visible:ring-red-500/20',
+            'w-full rounded-xl border bg-zinc-800/30 text-zinc-200 placeholder:text-zinc-600 transition-all duration-200',
+            isFloating ? 'pt-5 pb-1.5 h-12' : 'h-12',
+            'border-zinc-800/50 hover:border-zinc-700/50',
+            'focus-visible:border-emerald-500/50 focus-visible:ring-emerald-500/15 focus-visible:ring-2',
+            error && touched && 'border-red-400/30 focus-visible:border-red-400/50 focus-visible:ring-red-400/15',
           )}
         />
+
+        {/* Password toggle */}
         {showPasswordToggle && (
           <button
             type="button"
@@ -105,7 +135,7 @@ export function AuthField({
         <p className="text-[11px] text-zinc-500">{hint}</p>
       )}
 
-      {/* Error message */}
+      {/* Error message — softer, more encouraging */}
       <AnimatePresence>
         {error && touched && (
           <motion.p
@@ -113,7 +143,7 @@ export function AuthField({
             initial="hidden"
             animate="visible"
             exit="exit"
-            className="text-xs text-red-400/90"
+            className="text-xs text-red-400/80 leading-relaxed"
             role="alert"
             aria-live="polite"
           >

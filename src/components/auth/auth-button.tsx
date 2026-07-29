@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { loadingMessages } from './auth-animations';
 
 interface AuthButtonProps {
   loading?: boolean;
@@ -14,6 +13,7 @@ interface AuthButtonProps {
   variant?: 'primary' | 'secondary';
   className?: string;
   disabled?: boolean;
+  loadingMessages?: readonly string[];
 }
 
 export function AuthButton({
@@ -24,6 +24,7 @@ export function AuthButton({
   variant = 'primary',
   className,
   disabled = false,
+  loadingMessages: messages = ['Preparing your workspace\u2026', 'Almost there\u2026'],
 }: AuthButtonProps) {
   const [messageIndex, setMessageIndex] = useState(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -37,16 +38,18 @@ export function AuthButton({
 
   useEffect(() => {
     if (loading) {
-      // Start rotation when loading begins
       clearRotation();
       intervalRef.current = setInterval(() => {
-        setMessageIndex((prev) => (prev + 1) % loadingMessages.length);
+        setMessageIndex((prev) => (prev + 1) % messages.length);
       }, 2000);
     } else {
       clearRotation();
     }
     return clearRotation;
-  }, [loading, clearRotation]);
+  }, [loading, clearRotation, messages]);
+
+  // Reset message index when loading changes (outside effect to avoid cascading renders)
+  const effectiveIndex = loading ? messageIndex : 0;
 
   return (
     <div className="space-y-2">
@@ -55,9 +58,9 @@ export function AuthButton({
         onClick={onClick}
         disabled={loading || disabled}
         className={cn(
-          'h-11 w-full rounded-xl text-sm font-semibold transition-all cursor-pointer',
+          'h-12 w-full rounded-xl text-sm font-semibold transition-all duration-200 cursor-pointer',
           variant === 'primary'
-            ? 'btn-glow bg-emerald-500 text-white shadow-lg shadow-emerald-500/20 hover:bg-emerald-600 hover:shadow-xl hover:shadow-emerald-500/25'
+            ? 'bg-gradient-to-b from-emerald-500 to-emerald-600 text-white shadow-lg shadow-emerald-500/20 hover:from-emerald-400 hover:to-emerald-500 hover:shadow-xl hover:shadow-emerald-500/25 active:from-emerald-600 active:to-emerald-700'
             : 'bg-zinc-800/50 text-zinc-300 border border-zinc-700/30 shadow-none hover:bg-zinc-800/70 hover:text-zinc-200',
           loading && 'opacity-80',
           className,
@@ -66,7 +69,7 @@ export function AuthButton({
         {loading ? (
           <span className="flex items-center gap-2">
             <Loader2 className="h-4 w-4 animate-spin" />
-            {loadingMessages[messageIndex]}
+            {messages[effectiveIndex]}
           </span>
         ) : (
           children
@@ -91,7 +94,7 @@ export function AuthLink({
       type="button"
       onClick={onClick}
       className={cn(
-        'text-sm text-zinc-500 hover:text-emerald-400 transition-colors cursor-pointer',
+        'text-sm font-medium text-emerald-400/80 hover:text-emerald-400 transition-colors cursor-pointer',
         className,
       )}
     >

@@ -3,13 +3,13 @@
 import { useState } from 'react';
 import { signIn } from 'next-auth/react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowRight, Shield } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { loginSchema } from '@/lib/validators';
-import { AuthCard, AuthHeader, AuthDivider, AuthSuccessOverlay } from './auth-shared';
+import { AuthCard, AuthHeader, AuthDivider, AuthSuccessOverlay, TrustBadge } from './auth-shared';
 import { AuthField } from './auth-field';
 import { AuthButton, AuthLink } from './auth-button';
 import { OAuthButtons } from './oauth-buttons';
-import { cardEntrance } from './auth-animations';
+import { cardEntrance, signInLoadingMessages } from './auth-animations';
 
 interface SignInFormProps {
   onSwitchToSignUp: () => void;
@@ -19,7 +19,7 @@ interface SignInFormProps {
 
 function humanizeError(error: string): string {
   if (error.toLowerCase().includes('invalid') || error.toLowerCase().includes('credentials') || error.toLowerCase().includes('wrong')) {
-    return 'That email or password doesn\'t look right. Try again.';
+    return 'That email or password doesn\'t look right. Give it another try?';
   }
   if (error.toLowerCase().includes('network') || error.toLowerCase().includes('fetch')) {
     return 'Something went wrong on our end. Give it another try?';
@@ -32,7 +32,6 @@ export function SignInForm({ onSwitchToSignUp, onForgotPassword, onSuccess }: Si
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [authSuccess, setAuthSuccess] = useState(false);
-  const [rememberMe, setRememberMe] = useState(true);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,7 +52,7 @@ export function SignInForm({ onSwitchToSignUp, onForgotPassword, onSuccess }: Si
       }
 
       setAuthSuccess(true);
-      setTimeout(onSuccess, 800);
+      setTimeout(onSuccess, 1200);
     } catch (err: unknown) {
       setAuthSuccess(false);
       if (err instanceof Error) {
@@ -66,13 +65,16 @@ export function SignInForm({ onSwitchToSignUp, onForgotPassword, onSuccess }: Si
     }
   };
 
+  const oAuthAvailable = typeof window !== 'undefined' &&
+    (process.env.NEXT_PUBLIC_GOOGLE_OAUTH === 'true' || process.env.NEXT_PUBLIC_GITHUB_OAUTH === 'true');
+
   return (
     <motion.div variants={cardEntrance} initial="hidden" animate="visible" className="w-full max-w-[420px]">
       <AuthCard>
         <AuthSuccessOverlay
           show={authSuccess}
           message="Welcome back!"
-          subtext="Loading your workspace\u2026"
+          subtext="Picking up where you left off\u2026"
         />
 
         <AuthHeader
@@ -80,9 +82,9 @@ export function SignInForm({ onSwitchToSignUp, onForgotPassword, onSuccess }: Si
           subtitle="Sign in to continue your journey with your AI coach."
         />
 
-        {/* OAuth buttons */}
+        {/* OAuth buttons — only shown when configured */}
         <OAuthButtons mode="signin" />
-        <AuthDivider />
+        {oAuthAvailable && <AuthDivider />}
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
@@ -110,23 +112,14 @@ export function SignInForm({ onSwitchToSignUp, onForgotPassword, onSuccess }: Si
             required
           />
 
-          {/* Remember me & Forgot password row */}
-          <div className="flex items-center justify-between">
-            <label className="flex items-center gap-2 cursor-pointer group">
-              <input
-                type="checkbox"
-                checked={rememberMe}
-                onChange={(e) => setRememberMe(e.target.checked)}
-                className="h-3.5 w-3.5 rounded border-zinc-600 bg-zinc-800/30 text-emerald-500 focus:ring-emerald-500/20 focus:ring-offset-0 cursor-pointer accent-emerald-500"
-              />
-              <span className="text-xs text-zinc-500 group-hover:text-zinc-400 transition-colors">Remember me</span>
-            </label>
+          {/* Forgot password — more prominent, less hidden */}
+          <div className="flex justify-end -mt-1">
             <AuthLink onClick={onForgotPassword} className="text-xs">
-              Forgot password?
+              Forgot your password?
             </AuthLink>
           </div>
 
-          {/* Global error */}
+          {/* Global error — softer, more encouraging */}
           <AnimatePresence>
             {error && (
               <motion.div
@@ -142,23 +135,20 @@ export function SignInForm({ onSwitchToSignUp, onForgotPassword, onSuccess }: Si
             )}
           </AnimatePresence>
 
-          <AuthButton loading={loading} type="submit">
+          <AuthButton loading={loading} type="submit" loadingMessages={signInLoadingMessages}>
             Continue
             <ArrowRight className="ml-2 h-4 w-4" />
           </AuthButton>
         </form>
 
         {/* Footer */}
-        <div className="mt-6 flex items-center justify-center gap-1 text-sm">
+        <div className="mt-6 flex items-center justify-center gap-1.5 text-sm">
           <span className="text-zinc-500">Don't have an account?</span>
           <AuthLink onClick={onSwitchToSignUp}>Let's get started</AuthLink>
         </div>
 
-        {/* Privacy note */}
-        <div className="mt-4 flex items-center justify-center gap-1.5">
-          <Shield className="h-3 w-3 text-zinc-600" />
-          <span className="text-[11px] text-zinc-600">Your data stays private. Always.</span>
-        </div>
+        {/* Trust badge */}
+        <TrustBadge />
       </AuthCard>
     </motion.div>
   );

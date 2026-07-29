@@ -17,6 +17,7 @@ interface AuthExperienceProps {
  * Premium authentication experience.
  * Manages the flow between sign up, sign in, and forgot password.
  * Every transition is animated. Every state is handled.
+ * Conversational, not robotic.
  */
 export function AuthExperience({ initialView = 'signup', onSuccess }: AuthExperienceProps) {
   const [view, setView] = useState<AuthView>(initialView);
@@ -30,7 +31,7 @@ export function AuthExperience({ initialView = 'signup', onSuccess }: AuthExperi
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -20 }}
-            transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+            transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
           >
             <SignUpForm
               onSwitchToSignIn={() => setView('signin')}
@@ -45,7 +46,7 @@ export function AuthExperience({ initialView = 'signup', onSuccess }: AuthExperi
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: 20 }}
-            transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+            transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
           >
             <SignInForm
               onSwitchToSignUp={() => setView('signup')}
@@ -60,7 +61,7 @@ export function AuthExperience({ initialView = 'signup', onSuccess }: AuthExperi
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+            transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
           >
             <ForgotPasswordForm onBack={() => setView('signin')} />
           </motion.div>

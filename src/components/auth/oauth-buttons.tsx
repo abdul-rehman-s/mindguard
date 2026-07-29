@@ -3,15 +3,6 @@
 import { signIn } from 'next-auth/react';
 import { cn } from '@/lib/utils';
 
-/** Check if OAuth provider environment variables are configured */
-function isOAuthConfigured(provider: 'google' | 'github'): boolean {
-  if (typeof window === 'undefined') return false;
-  // In production, these would be checked server-side
-  // For now, check if the app has the provider configured
-  // We'll expose this via a data attribute or env check
-  return false; // Will be dynamically overridden
-}
-
 interface OAuthButtonsProps {
   mode: 'signup' | 'signin';
   className?: string;
@@ -20,12 +11,11 @@ interface OAuthButtonsProps {
 export function OAuthButtons({ mode, className }: OAuthButtonsProps) {
   const action = mode === 'signup' ? 'Continue' : 'Sign in';
 
-  // Check if any OAuth is available - we'll use a simple check
-  // If both are unavailable, don't render anything
+  // Check if any OAuth is available
   const googleAvailable = typeof window !== 'undefined' && process.env.NEXT_PUBLIC_GOOGLE_OAUTH === 'true';
   const githubAvailable = typeof window !== 'undefined' && process.env.NEXT_PUBLIC_GITHUB_OAUTH === 'true';
 
-  // If neither is configured, don't render at all
+  // If neither is configured, don't render at all — the divider will also be hidden
   if (!googleAvailable && !githubAvailable) {
     return null;
   }
@@ -63,4 +53,10 @@ export function OAuthButtons({ mode, className }: OAuthButtonsProps) {
       )}
     </div>
   );
+}
+
+/** Check if any OAuth provider is configured — used to conditionally show the divider */
+export function isOAuthAvailable(): boolean {
+  if (typeof window === 'undefined') return false;
+  return process.env.NEXT_PUBLIC_GOOGLE_OAUTH === 'true' || process.env.NEXT_PUBLIC_GITHUB_OAUTH === 'true';
 }

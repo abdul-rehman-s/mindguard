@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Mail, Shield } from 'lucide-react';
-import { AuthCard, AuthHeader } from './auth-shared';
+import { ArrowLeft, Mail } from 'lucide-react';
+import { AuthCard, AuthHeader, TrustBadge } from './auth-shared';
 import { AuthButton, AuthLink } from './auth-button';
 import { AuthField } from './auth-field';
 import { cardEntrance } from './auth-animations';
@@ -84,8 +84,9 @@ export function ForgotPasswordForm({ onBack }: ForgotPasswordFormProps) {
               transition={{ duration: 0.2 }}
             >
               <AuthHeader
-                title="Reset your password"
-                subtitle="No worries — it happens to everyone. Enter your email and we'll send you a link to get back in."
+                title="No worries"
+                subtitle="It happens to everyone. Enter your email and we'll send you a link to get back in."
+                icon={Mail}
               />
 
               <form onSubmit={handleSubmit} className="flex flex-col gap-4">
@@ -138,7 +139,7 @@ export function ForgotPasswordForm({ onBack }: ForgotPasswordFormProps) {
               transition={{ duration: 0.3 }}
               className="text-center py-4"
             >
-              {/* Success icon */}
+              {/* Success icon — animated envelope */}
               <div className="relative mx-auto mb-6">
                 <div className="absolute inset-0 rounded-full bg-emerald-500/10 blur-xl scale-150" />
                 <motion.div
@@ -151,13 +152,13 @@ export function ForgotPasswordForm({ onBack }: ForgotPasswordFormProps) {
                 </motion.div>
               </div>
 
-              <h3 className="text-lg font-bold text-zinc-100 mb-2">Check your email</h3>
+              <h3 className="text-lg font-bold text-zinc-100 mb-2">Check your inbox</h3>
               <p className="text-sm text-zinc-400 leading-relaxed mb-1">
                 We've sent a password reset link to
               </p>
               <p className="text-sm font-medium text-zinc-200 mb-6">{email}</p>
 
-              {/* What happens next */}
+              {/* What happens next — calm, clear guidance */}
               <div className="rounded-xl bg-zinc-800/30 border border-zinc-800/30 p-4 mb-6 text-left">
                 <p className="text-xs text-zinc-400 leading-relaxed">
                   <strong className="text-zinc-300">What happens next:</strong> Click the link in the email to set a new password. The link expires in 15 minutes for security.
@@ -170,7 +171,7 @@ export function ForgotPasswordForm({ onBack }: ForgotPasswordFormProps) {
                   type="button"
                   onClick={handleResend}
                   disabled={countdown > 0}
-                  className="cursor-pointer text-sm font-medium text-emerald-400 hover:text-emerald-300 transition-colors disabled:text-zinc-600 disabled:cursor-not-allowed"
+                  className="cursor-pointer text-sm font-medium text-emerald-400/80 hover:text-emerald-400 transition-colors disabled:text-zinc-600 disabled:cursor-not-allowed"
                 >
                   {countdown > 0 ? `Resend in ${countdown}s` : 'Resend email'}
                 </button>
