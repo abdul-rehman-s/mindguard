@@ -1,12 +1,16 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Mail } from 'lucide-react';
+import { ArrowLeft, Mail, Clock, ShieldCheck } from 'lucide-react';
 import { AuthCard, AuthHeader, TrustBadge } from './auth-shared';
 import { AuthButton, AuthLink } from './auth-button';
 import { AuthField } from './auth-field';
-import { cardEntrance } from './auth-animations';
+import {
+  cardEntrance,
+  envelopeFloat,
+  forgotPasswordLoadingMessages,
+} from './auth-animations';
 
 interface ForgotPasswordFormProps {
   onBack: () => void;
@@ -18,33 +22,49 @@ export function ForgotPasswordForm({ onBack }: ForgotPasswordFormProps) {
   const [error, setError] = useState('');
   const [sent, setSent] = useState(false);
   const [countdown, setCountdown] = useState(0);
+  const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const clearCountdown = useCallback(() => {
+    if (countdownRef.current) {
+      clearInterval(countdownRef.current);
+      countdownRef.current = null;
+    }
+  }, []);
+
+  const startCountdown = useCallback((seconds: number = 60) => {
+    clearCountdown();
+    setCountdown(seconds);
+    countdownRef.current = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          clearCountdown();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  }, [clearCountdown]);
+
+  // Cleanup on unmount
+  useEffect(() => clearCountdown, [clearCountdown]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+
+    if (!email || !email.includes('@')) {
+      setError("That email doesn't look right. Double-check it?");
+      return;
+    }
+
     setLoading(true);
 
     try {
-      if (!email || !email.includes('@')) {
-        throw new Error('That email doesn\'t look right. Double-check it?');
-      }
-
       // TODO: Implement actual password reset API endpoint
-      // For now, simulate the flow
+      // For now, simulate the flow with premium UX
       await new Promise((resolve) => setTimeout(resolve, 1500));
       setSent(true);
-      setCountdown(60);
-
-      // Countdown for resend
-      const interval = setInterval(() => {
-        setCountdown((prev) => {
-          if (prev <= 1) {
-            clearInterval(interval);
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
+      startCountdown(60);
     } catch (err: unknown) {
       if (err instanceof Error) {
         setError(err.message);
@@ -58,30 +78,27 @@ export function ForgotPasswordForm({ onBack }: ForgotPasswordFormProps) {
 
   const handleResend = async () => {
     if (countdown > 0) return;
-    setCountdown(60);
+    startCountdown(60);
     // TODO: Implement resend API
-    const interval = setInterval(() => {
-      setCountdown((prev) => {
-        if (prev <= 1) {
-          clearInterval(interval);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
   };
 
   return (
-    <motion.div variants={cardEntrance} initial="hidden" animate="visible" className="w-full max-w-[420px]">
+    <motion.div
+      variants={cardEntrance}
+      initial="hidden"
+      animate="visible"
+      className="w-full max-w-[420px]"
+    >
       <AuthCard>
         <AnimatePresence mode="wait">
           {!sent ? (
+            /* ── State 1: Request reset ── */
             <motion.div
               key="request"
-              initial={{ opacity: 0, x: 0 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.2 }}
+              initial={{ opacity: 0, x: 0, filter: 'blur(4px)' }}
+              animate={{ opacity: 1, x: 0, filter: 'blur(0px)' }}
+              exit={{ opacity: 0, x: -30, filter: 'blur(4px)' }}
+              transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
             >
               <AuthHeader
                 title="No worries"
@@ -106,9 +123,10 @@ export function ForgotPasswordForm({ onBack }: ForgotPasswordFormProps) {
                 <AnimatePresence>
                   {error && (
                     <motion.div
-                      initial={{ opacity: 0, y: -4 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -4 }}
+                      initial={{ opacity: 0, y: -4, height: 0 }}
+                      animate={{ opacity: 1, y: 0, height: 'auto' }}
+                      exit={{ opacity: 0, y: -4, height: 0 }}
+                      transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
                       className="rounded-xl bg-red-500/[0.06] border border-red-500/10 px-4 py-3"
                       role="alert"
                       aria-live="polite"
@@ -118,75 +136,193 @@ export function ForgotPasswordForm({ onBack }: ForgotPasswordFormProps) {
                   )}
                 </AnimatePresence>
 
-                <AuthButton loading={loading} type="submit">
-                  Send reset link
-                  <Mail className="ml-2 h-4 w-4" />
+                <AuthButton
+                  loading={loading}
+                  type="submit"
+                  loadingMessages={forgotPasswordLoadingMessages}
+                >
+                  <span className="flex items-center justify-center gap-2">
+                    Send reset link
+                    <Mail className="h-4 w-4" />
+                  </span>
                 </AuthButton>
               </form>
 
               <div className="mt-6 flex items-center justify-center">
                 <AuthLink onClick={onBack}>
-                  <ArrowLeft className="mr-1.5 h-3.5 w-3.5 inline" />
-                  Back to sign in
+                  <span className="flex items-center gap-1.5">
+                    <ArrowLeft className="h-3.5 w-3.5" />
+                    Back to sign in
+                  </span>
                 </AuthLink>
               </div>
+
+              <TrustBadge />
             </motion.div>
           ) : (
+            /* ── State 2: Email sent (success) ── */
             <motion.div
               key="sent"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.3 }}
-              className="text-center py-4"
+              initial={{ opacity: 0, x: 30, filter: 'blur(4px)' }}
+              animate={{ opacity: 1, x: 0, filter: 'blur(0px)' }}
+              transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+              className="text-center py-2"
             >
-              {/* Success icon — animated envelope */}
-              <div className="relative mx-auto mb-6">
-                <div className="absolute inset-0 rounded-full bg-emerald-500/10 blur-xl scale-150" />
+              {/* Animated envelope — large, prominent, floating */}
+              <div className="relative mx-auto mb-8">
+                {/* Ambient glow behind envelope */}
                 <motion.div
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  transition={{ type: 'spring', stiffness: 200, damping: 15 }}
-                  className="relative mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/10 ring-1 ring-emerald-500/20"
+                  initial={{ opacity: 0, scale: 0.5 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.15, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+                  className="absolute inset-0 flex items-center justify-center"
+                  aria-hidden="true"
                 >
-                  <Mail className="h-7 w-7 text-emerald-400" />
+                  <div className="h-32 w-32 rounded-full bg-emerald-500/10 blur-2xl" />
+                </motion.div>
+
+                {/* Outer ring pulse */}
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.2, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+                  className="relative mx-auto flex h-24 w-24 items-center justify-center"
+                  aria-hidden="true"
+                >
+                  <motion.div
+                    animate={{
+                      scale: [1, 1.15, 1],
+                      opacity: [0.15, 0.08, 0.15],
+                    }}
+                    transition={{
+                      duration: 3,
+                      repeat: Infinity,
+                      ease: 'easeInOut',
+                    }}
+                    className="absolute inset-0 rounded-full bg-emerald-500/15 ring-1 ring-emerald-500/20"
+                  />
+                </motion.div>
+
+                {/* Envelope icon with floating animation */}
+                <motion.div
+                  variants={envelopeFloat}
+                  initial="hidden"
+                  animate={['visible', 'floating']}
+                  className="relative mx-auto flex h-20 w-20 items-center justify-center rounded-2xl bg-emerald-500/10 ring-1 ring-emerald-500/20 shadow-lg shadow-emerald-500/10"
+                >
+                  <Mail className="h-9 w-9 text-emerald-400" />
                 </motion.div>
               </div>
 
-              <h3 className="text-lg font-bold text-zinc-100 mb-2">Check your inbox</h3>
-              <p className="text-sm text-zinc-400 leading-relaxed mb-1">
-                We've sent a password reset link to
-              </p>
-              <p className="text-sm font-medium text-zinc-200 mb-6">{email}</p>
+              {/* Title */}
+              <motion.h3
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3, duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+                className="text-xl font-bold text-zinc-100 mb-2 tracking-tight"
+              >
+                Check your inbox
+              </motion.h3>
 
-              {/* What happens next — calm, clear guidance */}
-              <div className="rounded-xl bg-zinc-800/30 border border-zinc-800/30 p-4 mb-6 text-left">
-                <p className="text-xs text-zinc-400 leading-relaxed">
-                  <strong className="text-zinc-300">What happens next:</strong> Click the link in the email to set a new password. The link expires in 15 minutes for security.
+              {/* Email display */}
+              <motion.div
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4, duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+                className="mb-6"
+              >
+                <p className="text-sm text-zinc-400 leading-relaxed mb-1">
+                  We've sent a password reset link to
                 </p>
-              </div>
+                <p className="text-sm font-semibold text-zinc-200 bg-zinc-800/40 inline-block px-3 py-1 rounded-lg">
+                  {email}
+                </p>
+              </motion.div>
 
-              {/* Resend */}
-              <div className="space-y-3">
+              {/* What happens next — guidance box */}
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5, duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+                className="rounded-xl bg-zinc-800/30 border border-zinc-800/40 p-4 mb-6 text-left space-y-3"
+              >
+                <p className="text-xs font-semibold text-zinc-300 uppercase tracking-wider">
+                  What happens next
+                </p>
+                <div className="flex items-start gap-3">
+                  <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 ring-1 ring-emerald-500/15 mt-0.5">
+                    <Mail className="h-3 w-3 text-emerald-400" />
+                  </div>
+                  <p className="text-xs text-zinc-400 leading-relaxed">
+                    Click the link in the email to set a new password
+                  </p>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 ring-1 ring-emerald-500/15 mt-0.5">
+                    <Clock className="h-3 w-3 text-emerald-400" />
+                  </div>
+                  <p className="text-xs text-zinc-400 leading-relaxed">
+                    The link expires in 15 minutes for security
+                  </p>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 ring-1 ring-emerald-500/15 mt-0.5">
+                    <ShieldCheck className="h-3 w-3 text-emerald-400" />
+                  </div>
+                  <p className="text-xs text-zinc-400 leading-relaxed">
+                    If you didn't request this, you can safely ignore the email
+                  </p>
+                </div>
+              </motion.div>
+
+              {/* Resend section */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.6, duration: 0.3 }}
+                className="space-y-3"
+              >
                 <button
                   type="button"
                   onClick={handleResend}
                   disabled={countdown > 0}
-                  className="cursor-pointer text-sm font-medium text-emerald-400/80 hover:text-emerald-400 transition-colors disabled:text-zinc-600 disabled:cursor-not-allowed"
+                  className="cursor-pointer text-sm font-medium text-emerald-400/80 hover:text-emerald-400 transition-colors duration-200 disabled:text-zinc-600 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30 rounded-sm"
                 >
-                  {countdown > 0 ? `Resend in ${countdown}s` : 'Resend email'}
+                  {countdown > 0 ? (
+                    <span className="flex items-center justify-center gap-1.5">
+                      <motion.span
+                        key={countdown}
+                        initial={{ opacity: 0, y: 4 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.15 }}
+                      >
+                        Resend in {countdown}s
+                      </motion.span>
+                    </span>
+                  ) : (
+                    'Resend email'
+                  )}
                 </button>
 
-                <p className="text-xs text-zinc-600">
+                <p className="text-xs text-zinc-600 leading-relaxed">
                   Didn't receive it? Check your spam folder.
                 </p>
-              </div>
+              </motion.div>
 
-              <div className="mt-6 pt-4 border-t border-zinc-800/30">
+              {/* Back to sign in */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.7, duration: 0.3 }}
+                className="mt-6 pt-4 border-t border-zinc-800/30"
+              >
                 <AuthLink onClick={onBack}>
-                  <ArrowLeft className="mr-1.5 h-3.5 w-3.5 inline" />
-                  Back to sign in
+                  <span className="flex items-center gap-1.5">
+                    <ArrowLeft className="h-3.5 w-3.5" />
+                    Back to sign in
+                  </span>
                 </AuthLink>
-              </div>
+              </motion.div>
             </motion.div>
           )}
         </AnimatePresence>

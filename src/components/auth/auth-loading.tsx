@@ -3,7 +3,7 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { Loader2 } from 'lucide-react';
 import { MindGuardSplashLogo } from '@/components/branding/mindguard-logo';
-import { loadingMessages } from './auth-animations';
+import { loadingMessages, shimmerPulse } from './auth-animations';
 import { useEffect, useState, useRef, useCallback } from 'react';
 
 /** Premium auth loading screen — never show blank screens */
@@ -45,9 +45,16 @@ export function AuthLoadingScreen({ message }: { message?: string }) {
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.3 }}
-            className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/10 ring-1 ring-emerald-500/15"
+            className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/10 ring-1 ring-emerald-500/15"
           >
             <Loader2 className="h-5 w-5 animate-spin text-emerald-400" />
+            {/* Shimmer ring */}
+            <motion.div
+              variants={shimmerPulse}
+              initial="hidden"
+              animate="visible"
+              className="absolute inset-0 rounded-xl ring-1 ring-emerald-500/10"
+            />
           </motion.div>
 
           <AnimatePresence mode="wait">
