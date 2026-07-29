@@ -68,9 +68,9 @@ export function OAuthButtons({ mode, className }: OAuthButtonsProps) {
         onClick={() => signIn('google', { callbackUrl: '/' })}
         aria-label={`${action} with Google`}
         className={cn(
-          'relative flex flex-1 items-center justify-center gap-2 rounded-xl',
+          'relative flex flex-1 items-center justify-center gap-2.5 rounded-xl',
           'border border-zinc-800/40 bg-zinc-800/30 backdrop-blur-sm',
-          'px-4 py-2.5 text-sm font-medium transition-all duration-200',
+          'px-4 py-3.5 text-sm font-medium transition-all duration-200',
           'active:scale-[0.98]',
           googleEnabled
             ? 'cursor-pointer text-zinc-300 hover:border-zinc-700/40 hover:bg-zinc-800/50 hover:text-zinc-200'
@@ -91,9 +91,9 @@ export function OAuthButtons({ mode, className }: OAuthButtonsProps) {
         onClick={() => signIn('github', { callbackUrl: '/' })}
         aria-label={`${action} with GitHub`}
         className={cn(
-          'relative flex flex-1 items-center justify-center gap-2 rounded-xl',
+          'relative flex flex-1 items-center justify-center gap-2.5 rounded-xl',
           'border border-zinc-800/40 bg-zinc-800/30 backdrop-blur-sm',
-          'px-4 py-2.5 text-sm font-medium transition-all duration-200',
+          'px-4 py-3.5 text-sm font-medium transition-all duration-200',
           'active:scale-[0.98]',
           githubEnabled
             ? 'cursor-pointer text-zinc-300 hover:border-zinc-700/40 hover:bg-zinc-800/50 hover:text-zinc-200'

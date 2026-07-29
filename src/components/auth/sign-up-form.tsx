@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { signIn } from 'next-auth/react';
+import { signIn, getSession } from 'next-auth/react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { registerSchema } from '@/lib/validators';
 import {
@@ -75,7 +75,7 @@ const stepVariants = {
     scale: 1,
     transition: {
       duration: 0.45,
-      ease: [0.22, 1, 0.36, 1],
+      ease: [0.22, 1, 0.36, 1] as [number, number, number, number],
     },
   },
   exit: (direction: 'forward' | 'back') => ({
@@ -84,7 +84,7 @@ const stepVariants = {
     scale: 0.97,
     transition: {
       duration: 0.28,
-      ease: [0.22, 1, 0.36, 1],
+      ease: [0.22, 1, 0.36, 1] as [number, number, number, number],
     },
   }),
 };
@@ -230,7 +230,11 @@ export function SignUpForm({ onSwitchToSignIn, onForgotPassword, onSuccess, onRe
 
       // Show success overlay
       setAuthSuccess(true);
-      setTimeout(onSuccess, 1200);
+      setTimeout(async () => {
+        // Force session refresh so page.tsx detects the new authenticated state
+        await getSession();
+        onSuccess();
+      }, 1200);
     } catch (err: unknown) {
       setAuthSuccess(false);
       if (err instanceof Error) {
@@ -249,7 +253,7 @@ export function SignUpForm({ onSwitchToSignIn, onForgotPassword, onSuccess, onRe
       initial={{ opacity: 0, y: 16, scale: 0.98 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-      className="w-full max-w-[420px] mx-auto"
+      className="w-full max-w-[560px] mx-auto"
     >
       <AuthCard>
         {/* Success overlay */}
@@ -263,7 +267,7 @@ export function SignUpForm({ onSwitchToSignIn, onForgotPassword, onSuccess, onRe
         {currentStep > 1 && <BackButton onClick={goBack} />}
 
         {/* Step indicator */}
-        <div className="mb-6">
+        <div className="mb-8">
           <StepIndicator currentStep={currentStep} totalSteps={3} />
         </div>
 
@@ -290,7 +294,7 @@ export function SignUpForm({ onSwitchToSignIn, onForgotPassword, onSuccess, onRe
               {oAuthAvailable && <AuthDivider />}
 
               {/* Name field */}
-              <div className="space-y-4">
+              <div className="space-y-5">
                 <AuthField
                   id="signup-name"
                   label="Your name"
@@ -330,7 +334,7 @@ export function SignUpForm({ onSwitchToSignIn, onForgotPassword, onSuccess, onRe
                 subtitle="We'll only use this to sign you in and important updates."
               />
 
-              <div className="space-y-4">
+              <div className="space-y-5">
                 <AuthField
                   id="signup-email"
                   label="Your email"
@@ -372,7 +376,7 @@ export function SignUpForm({ onSwitchToSignIn, onForgotPassword, onSuccess, onRe
                 subtitle="Make it something you'll remember — at least 8 characters."
               />
 
-              <div className="space-y-4">
+              <div className="space-y-5">
                 <AuthField
                   id="signup-password"
                   label="Password"
@@ -424,7 +428,7 @@ export function SignUpForm({ onSwitchToSignIn, onForgotPassword, onSuccess, onRe
         </AnimatePresence>
 
         {/* ── Footer: switch to sign in ──────────────────────── */}
-        <div className="mt-6 flex items-center justify-center gap-1.5 text-sm">
+        <div className="mt-8 flex items-center justify-center gap-1.5 text-[15px]">
           <span className="text-zinc-500">Already have an account?</span>
           <AuthLink onClick={onSwitchToSignIn}>Sign in</AuthLink>
         </div>

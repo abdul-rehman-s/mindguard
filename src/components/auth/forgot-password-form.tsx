@@ -87,7 +87,7 @@ export function ForgotPasswordForm({ onBack }: ForgotPasswordFormProps) {
       variants={cardEntrance}
       initial="hidden"
       animate="visible"
-      className="w-full max-w-[420px]"
+      className="w-full max-w-[560px]"
     >
       <AuthCard>
         <AnimatePresence mode="wait">

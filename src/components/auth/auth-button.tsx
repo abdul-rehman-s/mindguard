@@ -56,7 +56,7 @@ export function AuthButton({
   const effectiveIndex = loading ? messageIndex : 0;
 
   // Height map: primary gets h-13, secondary gets h-12, ghost gets h-10
-  const heightClass = variant === 'primary' ? 'h-[52px]' : variant === 'secondary' ? 'h-12' : 'h-10';
+  const heightClass = variant === 'primary' ? 'h-[56px]' : variant === 'secondary' ? 'h-[52px]' : 'h-11';
 
   // Style map per variant
   const variantStyles: Record<string, string> = {
@@ -75,7 +75,7 @@ export function AuthButton({
         onClick={onClick}
         disabled={loading || disabled}
         className={cn(
-          'w-full rounded-xl text-sm font-semibold transition-all duration-300 ease-out cursor-pointer',
+          'w-full rounded-xl text-[15px] font-semibold transition-all duration-300 ease-out cursor-pointer',
           heightClass,
           variantStyles[variant] ?? variantStyles.primary,
           loading && 'opacity-80',
@@ -131,7 +131,7 @@ export function StepButton({
       onClick={onClick}
       disabled={disabled || loading}
       className={cn(
-        'group relative w-full h-[52px] rounded-xl text-[15px] font-semibold',
+        'group relative w-full h-[56px] rounded-xl text-base font-semibold',
         'transition-all duration-300 ease-out cursor-pointer',
         'bg-gradient-to-b from-emerald-500 to-emerald-600 text-white',
         'shadow-lg shadow-emerald-500/20',

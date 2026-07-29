@@ -99,6 +99,22 @@ function ViewLoadingFallback() {
   );
 }
 
+// ─── Premium page transition variants ───
+
+const pageTransition = {
+  initial: { opacity: 0 },
+  animate: { opacity: 1 },
+  exit: { opacity: 0 },
+  transition: { duration: 0.4, ease: [0.22, 1, 0.36, 1] as [number, number, number, number] },
+};
+
+const pageTransitionScale = {
+  initial: { opacity: 0, scale: 0.98 },
+  animate: { opacity: 1, scale: 1 },
+  exit: { opacity: 0, scale: 0.98 },
+  transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] as [number, number, number, number] },
+};
+
 // ─── Main Page ───
 
 export default function HomePage() {
@@ -178,6 +194,7 @@ export default function HomePage() {
     setFocusMode('idle');
   };
 
+  // ─── Loading state ───
   if (!mounted || status === 'loading') {
     return (
       <div className="flex min-h-screen items-center justify-center bg-zinc-950">
@@ -196,23 +213,16 @@ export default function HomePage() {
     );
   }
 
-  if (currentView === 'landing' || status === 'unauthenticated') {
-    return (
-      <Suspense fallback={<ViewLoadingFallback />}>
-        <LandingPage />
-      </Suspense>
-    );
-  }
+  // ─── Determine the active page key for AnimatePresence ───
+  // Landing page only shows for unauthenticated users.
+  // Authenticated users always see onboarding or dashboard regardless of currentView.
+  const isLanding = status === 'unauthenticated';
+  const isOnboarding = !isLanding && needsOnboarding;
+  const isFocusMode = !isLanding && !isOnboarding && focusMode === 'focus';
+  const isApp = !isLanding && !isOnboarding && !isFocusMode;
 
-  if (needsOnboarding) {
-    return (
-      <Suspense fallback={<ViewLoadingFallback />}>
-        <OnboardingFlow onComplete={handleOnboardingComplete} />
-      </Suspense>
-    );
-  }
-
-  if (focusMode === 'focus') {
+  // ─── Focus mode (full-screen, no transition needed) ───
+  if (isFocusMode) {
     return (
       <Suspense fallback={<ViewLoadingFallback />}>
         <FocusMode
@@ -224,33 +234,63 @@ export default function HomePage() {
     );
   }
 
+  // ─── Main app with sidebar ───
+  if (isApp) {
+    return (
+      <AppShell>
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={currentView}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15, ease: [0.4, 0, 0.2, 1] }}
+          >
+            <Suspense fallback={<ViewLoadingFallback />}>
+              {currentView === 'dashboard' && <DashboardView />}
+              {currentView === 'life' && <LifeDashboard />}
+              {currentView === 'mission' && <MissionView />}
+              {currentView === 'timer' && <TimerView />}
+              {currentView === 'reflection' && <ReflectionView />}
+              {currentView === 'sessions' && <SessionHistoryView />}
+              {currentView === 'stats' && <StatsView />}
+              {currentView === 'replay' && <ReplayView />}
+              {currentView === 'review' && <DailyReview />}
+              {currentView === 'wrapped' && <WrappedView />}
+              {currentView === 'settings' && <SettingsView />}
+              {currentView === 'habits' && <HabitTrackerView />}
+              {currentView === 'monthly' && <MonthlyReportView />}
+            </Suspense>
+          </motion.div>
+        </AnimatePresence>
+      </AppShell>
+    );
+  }
+
+  // ─── Landing → Onboarding transition with AnimatePresence ───
+  const pageKey = isLanding ? 'landing' : 'onboarding';
+
   return (
-    <AppShell>
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={currentView}
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.15, ease: [0.4, 0, 0.2, 1] }}
-        >
+    <AnimatePresence mode="wait">
+      <motion.div
+        key={pageKey}
+        initial={pageTransitionScale.initial}
+        animate={pageTransitionScale.animate}
+        exit={pageTransition.exit}
+        transition={pageTransitionScale.transition}
+        className="min-h-screen"
+      >
+        {isLanding && (
           <Suspense fallback={<ViewLoadingFallback />}>
-            {currentView === 'dashboard' && <DashboardView />}
-            {currentView === 'life' && <LifeDashboard />}
-            {currentView === 'mission' && <MissionView />}
-            {currentView === 'timer' && <TimerView />}
-            {currentView === 'reflection' && <ReflectionView />}
-            {currentView === 'sessions' && <SessionHistoryView />}
-            {currentView === 'stats' && <StatsView />}
-            {currentView === 'replay' && <ReplayView />}
-            {currentView === 'review' && <DailyReview />}
-            {currentView === 'wrapped' && <WrappedView />}
-            {currentView === 'settings' && <SettingsView />}
-            {currentView === 'habits' && <HabitTrackerView />}
-            {currentView === 'monthly' && <MonthlyReportView />}
+            <LandingPage />
           </Suspense>
-        </motion.div>
-      </AnimatePresence>
-    </AppShell>
+        )}
+        {isOnboarding && (
+          <Suspense fallback={<ViewLoadingFallback />}>
+            <OnboardingFlow onComplete={handleOnboardingComplete} />
+          </Suspense>
+        )}
+      </motion.div>
+    </AnimatePresence>
   );
 }

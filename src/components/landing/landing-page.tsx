@@ -250,7 +250,8 @@ export function LandingPage() {
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
 
   const handleAuthSuccess = () => {
-    // Auth success triggers the normal session flow in page.tsx
+    // Session refresh is handled by the form components via getSession().
+    // This callback exists for any additional post-success logic.
   };
 
   /* ═══════════════════════════════════════════════════════════════════ */
@@ -849,7 +850,7 @@ export function LandingPage() {
               </AnimatedSection>
 
               {/* ── Right: Auth Form ── */}
-              <AnimatedSection className="w-full max-w-[420px] lg:w-[420px]">
+              <AnimatedSection className="w-full max-w-[560px] lg:w-[560px]">
                 <AuthExperience onSuccess={handleAuthSuccess} />
               </AnimatedSection>
             </div>

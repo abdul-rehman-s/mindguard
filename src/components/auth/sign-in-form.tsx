@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { signIn } from 'next-auth/react';
+import { signIn, getSession } from 'next-auth/react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowRight } from 'lucide-react';
 import { loginSchema } from '@/lib/validators';
@@ -69,7 +69,7 @@ const stepVariants = {
     scale: 1,
     transition: {
       duration: 0.45,
-      ease: [0.22, 1, 0.36, 1],
+      ease: [0.22, 1, 0.36, 1] as [number, number, number, number],
     },
   },
   exitForward: {
@@ -78,7 +78,7 @@ const stepVariants = {
     scale: 0.97,
     transition: {
       duration: 0.28,
-      ease: [0.22, 1, 0.36, 1],
+      ease: [0.22, 1, 0.36, 1] as [number, number, number, number],
     },
   },
   exitBack: {
@@ -87,7 +87,7 @@ const stepVariants = {
     scale: 0.97,
     transition: {
       duration: 0.28,
-      ease: [0.22, 1, 0.36, 1],
+      ease: [0.22, 1, 0.36, 1] as [number, number, number, number],
     },
   },
 };
@@ -178,7 +178,11 @@ export function SignInForm({ onSwitchToSignUp, onForgotPassword, onSuccess }: Si
 
       // Success — show celebration overlay
       setAuthSuccess(true);
-      setTimeout(onSuccess, 1200);
+      setTimeout(async () => {
+        // Force session refresh so page.tsx detects the new authenticated state
+        await getSession();
+        onSuccess();
+      }, 1200);
     } catch (err: unknown) {
       setAuthSuccess(false);
       if (err instanceof Error) {
@@ -204,7 +208,7 @@ export function SignInForm({ onSwitchToSignUp, onForgotPassword, onSuccess }: Si
       variants={cardEntrance}
       initial="hidden"
       animate="visible"
-      className="w-full max-w-[420px]"
+      className="w-full max-w-[560px]"
     >
       <AuthCard>
         {/* Success overlay */}
@@ -229,7 +233,7 @@ export function SignInForm({ onSwitchToSignUp, onForgotPassword, onSuccess }: Si
         </AnimatePresence>
 
         {/* Step indicator — 2 dots */}
-        <div className="mb-6">
+        <div className="mb-8">
           <StepIndicator currentStep={step} totalSteps={2} />
         </div>
 
@@ -254,7 +258,7 @@ export function SignInForm({ onSwitchToSignUp, onForgotPassword, onSuccess }: Si
               {oAuthAvailable && <AuthDivider />}
 
               {/* Email field */}
-              <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-5">
                 <AuthField
                   id="signin-email"
                   label="Your email"
@@ -297,7 +301,7 @@ export function SignInForm({ onSwitchToSignUp, onForgotPassword, onSuccess }: Si
               />
 
               {/* Password field + sign in */}
-              <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-5">
                 <AuthField
                   id="signin-password"
                   label="Password"
@@ -359,7 +363,7 @@ export function SignInForm({ onSwitchToSignUp, onForgotPassword, onSuccess }: Si
         </AnimatePresence>
 
         {/* Footer — "Don't have an account? Let's get started" */}
-        <div className="mt-6 flex items-center justify-center gap-1.5 text-sm">
+        <div className="mt-8 flex items-center justify-center gap-1.5 text-[15px]">
           <span className="text-zinc-500">Don&apos;t have an account?</span>
           <AuthLink onClick={onSwitchToSignUp}>Let&apos;s get started</AuthLink>
         </div>
