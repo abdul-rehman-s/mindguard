@@ -67,7 +67,7 @@ export function EmailVerification({ email, onBack, onVerified }: EmailVerificati
       variants={cardEntrance}
       initial="hidden"
       animate="visible"
-      className="w-full max-w-[560px]"
+      className="w-full max-w-[600px]"
     >
       <AuthCard>
         <div className="text-center py-2">

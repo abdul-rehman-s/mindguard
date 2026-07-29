@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronRight, ChevronLeft } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Sparkles, Brain, Shield, Zap, Target, Heart } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -39,7 +39,7 @@ const STEP_LABELS = [
   'Finish',
 ];
 
-// TASK 7: Contextual progress messages — feel rewarding, not generic
+// Contextual progress messages — feel rewarding, not generic
 const PROGRESS_MESSAGES = [
   'Welcome',                              // 0 — Welcome
   'Discovering your interests...',         // 1 — Interests
@@ -54,8 +54,22 @@ const PROGRESS_MESSAGES = [
   'Almost ready!',                         // 10 — Finish
 ];
 
+// Step icons for the journey progress
+const STEP_ICONS = [
+  Sparkles, // Welcome
+  Brain,    // Interests
+  Zap,      // Role
+  Heart,    // Schedule
+  Target,   // Focus Style
+  Sparkles, // Motivation
+  Shield,   // Distractions
+  Target,   // Goals
+  Shield,   // Privacy
+  Zap,      // Permissions
+  Sparkles, // Finish
+];
+
 // ─── Internal mapping functions ──────────────────────────────────────────────
-// These map user-friendly answers to internal timer/workflow settings
 
 function mapScheduleTypeToChronotype(scheduleType: string): string {
   const map: Record<string, string> = {
@@ -84,7 +98,7 @@ function mapFocusDurationToPomodoroPreference(focusDurationComfort: string): str
     '45min': '45/10',
     'about_an_hour': '60/15',
     '90_plus': '90/20',
-    'it_depends': '45/10', // default balanced
+    'it_depends': '45/10',
   };
   return map[focusDurationComfort] ?? '45/10';
 }
@@ -145,11 +159,11 @@ export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
   // Step 2: Role (no work mode)
   const [selectedRole, setSelectedRole] = useState('');
 
-  // Step 3: Schedule type + sleep range (replaces exact wake/sleep)
+  // Step 3: Schedule type + sleep range
   const [scheduleType, setScheduleType] = useState('');
   const [sleepRange, setSleepRange] = useState('');
 
-  // Step 4: Focus style (natural language)
+  // Step 4: Focus style
   const [hasAdhd, setHasAdhd] = useState(false);
   const [focusDurationComfort, setFocusDurationComfort] = useState('');
   const [workStylePreference, setWorkStylePreference] = useState('');
@@ -270,7 +284,6 @@ export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
   const handleFinish = useCallback(async () => {
     setSaving(true);
 
-    // Map user-friendly answers to internal settings
     const chronotype = mapScheduleTypeToChronotype(scheduleType);
     const workSchedule = mapScheduleTypeToWorkSchedule(scheduleType);
     const pomodoroPreference = mapFocusDurationToPomodoroPreference(focusDurationComfort);
@@ -287,7 +300,6 @@ export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
       biggestDistraction: distractionRanking[0] ?? selectedDistractions[0],
       goals: selectedGoals,
       distractionsList: selectedDistractions,
-      // Derived legacy fields
       role: selectedRole,
       chronotype,
       focusStyle,
@@ -300,7 +312,6 @@ export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
       distractionRanking,
       focusGoalMinutes,
       sleepTime: sleepRange,
-      // UX Rebirth raw answer fields
       scheduleType,
       sleepRange,
       focusDurationComfort,
@@ -337,6 +348,9 @@ export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
     }
   }, [selectedImprovements, selectedRole, scheduleType, sleepRange, hasAdhd, focusDurationComfort, workStylePreference, coachPersonality, motivationStyle, selectedDistractions, distractionRanking, selectedGoals, focusGoalMinutes, otherImproveText, firstMission, onComplete]);
 
+  // ─── Progress percentage ─────────────────────────────────────────────────
+  const progressPercent = Math.round(((step + 1) / TOTAL_STEPS) * 100);
+
   // ─── Render ──────────────────────────────────────────────────────────────
 
   return (
@@ -345,17 +359,18 @@ export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
       aria-label="Onboarding setup wizard"
       role="form"
     >
-      {/* Background glows — TASK 8: softer, more premium */}
+      {/* Background glows — premium, atmospheric */}
       <div
-        className="pointer-events-none absolute left-1/2 top-1/4 -translate-x-1/2 -translate-y-1/2 h-[500px] w-[500px] rounded-full bg-emerald-500/[0.04] blur-[120px]"
+        className="pointer-events-none absolute left-1/2 top-1/4 -translate-x-1/2 -translate-y-1/2 h-[600px] w-[600px] rounded-full bg-emerald-500/[0.04] blur-[120px]"
         aria-hidden="true"
       />
       <div
-        className="pointer-events-none absolute right-1/4 bottom-1/4 h-[350px] w-[350px] rounded-full bg-teal-500/[0.03] blur-[100px]"
+        className="pointer-events-none absolute right-1/4 bottom-1/4 h-[400px] w-[400px] rounded-full bg-teal-500/[0.03] blur-[100px]"
         aria-hidden="true"
       />
 
-      <div className="relative z-10 w-full max-w-xl px-4 sm:px-6">
+      {/* Main container — wider, more spacious */}
+      <div className="relative z-10 w-full max-w-[800px] px-4 sm:px-6">
         {/* Logo */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
@@ -365,79 +380,100 @@ export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
           <MindGuardLogo size="md" showText={true} />
         </motion.div>
 
-        {/* TASK 7: Improved progress indicator */}
-        <div className="mb-6" aria-label={`Step ${step + 1} of ${TOTAL_STEPS}: ${STEP_LABELS[step]}`}>
-          {/* Progress bar */}
-          <div className="mb-2.5 flex gap-1" aria-hidden="true">
+        {/* ─── Premium Journey Progress Bar ─── */}
+        <div className="mb-8" aria-label={`Step ${step + 1} of ${TOTAL_STEPS}: ${STEP_LABELS[step]}`}>
+          {/* Journey progress bar — segmented, animated */}
+          <div className="mb-3 flex gap-1.5" aria-hidden="true">
             {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
               <div
                 key={i}
-                className="h-1 flex-1 rounded-full bg-white/[0.06] overflow-hidden"
+                className="h-1.5 flex-1 rounded-full bg-white/[0.06] overflow-hidden"
               >
                 <motion.div
                   className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-400"
                   initial={{ width: '0%' }}
                   animate={{ width: i <= step ? '100%' : '0%' }}
-                  transition={{ duration: 0.4, ease: 'easeOut' }}
+                  transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
                 />
               </div>
             ))}
           </div>
-          {/* Contextual message + counter */}
+
+          {/* Journey context — step name + progress percentage */}
           <div className="flex items-center justify-between">
-            <motion.p
+            <motion.div
               key={step}
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.3 }}
-              className="text-xs text-emerald-400/60"
-              aria-live="polite"
+              className="flex items-center gap-2"
             >
-              {PROGRESS_MESSAGES[step]}
-            </motion.p>
-            <p className="text-[11px] text-zinc-600">
-              {step + 1}/{TOTAL_STEPS}
-            </p>
+              <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-emerald-500/10 ring-1 ring-emerald-500/15">
+                {(() => {
+                  const StepIcon = STEP_ICONS[step];
+                  return <StepIcon className="h-3 w-3 text-emerald-400" />;
+                })()}
+              </div>
+              <span className="text-sm text-emerald-400/70 font-medium" aria-live="polite">
+                {PROGRESS_MESSAGES[step]}
+              </span>
+            </motion.div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-zinc-600">{progressPercent}%</span>
+            </div>
           </div>
         </div>
 
-        {/* Steps container */}
-        <div className="relative min-h-[340px] sm:min-h-[380px]" aria-live="polite">
-          <AnimatePresence mode="wait" custom={direction}>
-            {step === 0 && <WelcomeStep direction={direction} />}
-            {step === 1 && <ImproveStep selected={selectedImprovements} onToggle={toggleImprovement} otherImproveText={otherImproveText} onOtherImproveTextChange={setOtherImproveText} direction={direction} />}
-            {step === 2 && <RoleStep selectedRole={selectedRole} onSelectRole={setSelectedRole} direction={direction} />}
-            {step === 3 && <ScheduleStep scheduleType={scheduleType} onScheduleTypeChange={setScheduleType} sleepRange={sleepRange} onSleepRangeChange={setSleepRange} direction={direction} />}
-            {step === 4 && <FocusStyleStep hasAdhd={hasAdhd} onHasAdhdChange={setHasAdhd} focusDurationComfort={focusDurationComfort} onFocusDurationComfortChange={setFocusDurationComfort} workStylePreference={workStylePreference} onWorkStylePreferenceChange={setWorkStylePreference} direction={direction} />}
-            {step === 5 && <MotivationStep coachPersonality={coachPersonality} onCoachChange={setCoachPersonality} motivationStyle={motivationStyle} onMotivationChange={setMotivationStyle} direction={direction} />}
-            {step === 6 && <DistractionStep selectedDistractions={selectedDistractions} onToggleDistraction={toggleDistraction} distractionRanking={distractionRanking} onSetRanking={setDistractionRanking} direction={direction} />}
-            {step === 7 && <GoalsStep selectedGoals={selectedGoals} onToggleGoal={toggleGoal} focusGoalMinutes={focusGoalMinutes} onFocusGoalChange={setFocusGoalMinutes} direction={direction} />}
-            {step === 8 && <PrivacyStep direction={direction} />}
-            {step === 9 && <PermissionsStep permissions={permissions} onTogglePermission={togglePermission} direction={direction} />}
-            {step === 10 && (
-              <FinishStep
-                selectedImprovements={selectedImprovements}
-                otherImproveText={otherImproveText}
-                selectedRole={selectedRole}
-                scheduleType={scheduleType}
-                sleepRange={sleepRange}
-                hasAdhd={hasAdhd}
-                focusDurationComfort={focusDurationComfort}
-                workStylePreference={workStylePreference}
-                coachPersonality={coachPersonality}
-                motivationStyle={motivationStyle}
-                selectedDistractions={selectedDistractions}
-                distractionRanking={distractionRanking}
-                selectedGoals={selectedGoals}
-                focusGoalMinutes={focusGoalMinutes}
-                firstMission={firstMission}
-                direction={direction}
-              />
-            )}
-          </AnimatePresence>
+        {/* ─── Step Content Card ─── */}
+        <div className="relative overflow-hidden rounded-2xl border border-zinc-800/60 bg-zinc-900/80 backdrop-blur-2xl shadow-2xl shadow-black/30">
+          {/* Top premium gradient line */}
+          <div className="absolute left-0 right-0 top-0 h-[1.5px] bg-gradient-to-r from-transparent via-emerald-400/70 to-transparent" />
+          {/* Inner glow at top */}
+          <div
+            className="absolute left-0 right-0 top-0 h-40 bg-gradient-to-b from-emerald-500/[0.04] via-emerald-500/[0.01] to-transparent pointer-events-none"
+            aria-hidden="true"
+          />
+
+          <div className="relative p-8 sm:p-10 lg:p-12">
+            {/* Steps container — generous min-height */}
+            <div className="relative min-h-[380px] sm:min-h-[420px]" aria-live="polite">
+              <AnimatePresence mode="wait" custom={direction}>
+                {step === 0 && <WelcomeStep direction={direction} />}
+                {step === 1 && <ImproveStep selected={selectedImprovements} onToggle={toggleImprovement} otherImproveText={otherImproveText} onOtherImproveTextChange={setOtherImproveText} direction={direction} />}
+                {step === 2 && <RoleStep selectedRole={selectedRole} onSelectRole={setSelectedRole} direction={direction} />}
+                {step === 3 && <ScheduleStep scheduleType={scheduleType} onScheduleTypeChange={setScheduleType} sleepRange={sleepRange} onSleepRangeChange={setSleepRange} direction={direction} />}
+                {step === 4 && <FocusStyleStep hasAdhd={hasAdhd} onHasAdhdChange={setHasAdhd} focusDurationComfort={focusDurationComfort} onFocusDurationComfortChange={setFocusDurationComfort} workStylePreference={workStylePreference} onWorkStylePreferenceChange={setWorkStylePreference} direction={direction} />}
+                {step === 5 && <MotivationStep coachPersonality={coachPersonality} onCoachChange={setCoachPersonality} motivationStyle={motivationStyle} onMotivationChange={setMotivationStyle} direction={direction} />}
+                {step === 6 && <DistractionStep selectedDistractions={selectedDistractions} onToggleDistraction={toggleDistraction} distractionRanking={distractionRanking} onSetRanking={setDistractionRanking} direction={direction} />}
+                {step === 7 && <GoalsStep selectedGoals={selectedGoals} onToggleGoal={toggleGoal} focusGoalMinutes={focusGoalMinutes} onFocusGoalChange={setFocusGoalMinutes} direction={direction} />}
+                {step === 8 && <PrivacyStep direction={direction} />}
+                {step === 9 && <PermissionsStep permissions={permissions} onTogglePermission={togglePermission} direction={direction} />}
+                {step === 10 && (
+                  <FinishStep
+                    selectedImprovements={selectedImprovements}
+                    otherImproveText={otherImproveText}
+                    selectedRole={selectedRole}
+                    scheduleType={scheduleType}
+                    sleepRange={sleepRange}
+                    hasAdhd={hasAdhd}
+                    focusDurationComfort={focusDurationComfort}
+                    workStylePreference={workStylePreference}
+                    coachPersonality={coachPersonality}
+                    motivationStyle={motivationStyle}
+                    selectedDistractions={selectedDistractions}
+                    distractionRanking={distractionRanking}
+                    selectedGoals={selectedGoals}
+                    focusGoalMinutes={focusGoalMinutes}
+                    firstMission={firstMission}
+                    direction={direction}
+                  />
+                )}
+              </AnimatePresence>
+            </div>
+          </div>
         </div>
 
-        {/* Navigation — TASK 9: Accessibility improvements */}
+        {/* Navigation */}
         <div className="mt-8 flex items-center justify-between">
           {step > 0 ? (
             <Button

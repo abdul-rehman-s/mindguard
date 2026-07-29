@@ -8,7 +8,6 @@ import {
   AuthCard,
   AuthHeader,
   AuthDivider,
-  AuthSuccessOverlay,
   StepIndicator,
   BackButton,
   TermsNotice,
@@ -124,7 +123,7 @@ export function SignUpForm({ onSwitchToSignIn, onForgotPassword, onSuccess, onRe
   const [stepErrors, setStepErrors] = useState<Record<number, string>>({});
   const [loading, setLoading] = useState(false);
   const [globalError, setGlobalError] = useState('');
-  const [authSuccess, setAuthSuccess] = useState(false);
+  const [success, setSuccess] = useState(false);
 
   // ── OAuth availability ─────────────────────────────────────────
   const oAuthAvailable =
@@ -228,15 +227,15 @@ export function SignUpForm({ onSwitchToSignIn, onForgotPassword, onSuccess, onRe
         throw new Error('Invalid credentials');
       }
 
-      // Show success overlay
-      setAuthSuccess(true);
-      setTimeout(async () => {
-        // Force session refresh so page.tsx detects the new authenticated state
-        await getSession();
-        onSuccess();
-      }, 1200);
+      // Brief success state on button, then transition
+      setSuccess(true);
+      // Force session refresh so page.tsx detects the new authenticated state
+      await getSession();
+      // Small delay so the user sees the success state before page transition
+      await new Promise((r) => setTimeout(r, 400));
+      onSuccess();
     } catch (err: unknown) {
-      setAuthSuccess(false);
+      setSuccess(false);
       if (err instanceof Error) {
         setGlobalError(humanizeError(err.message));
       } else {
@@ -253,16 +252,9 @@ export function SignUpForm({ onSwitchToSignIn, onForgotPassword, onSuccess, onRe
       initial={{ opacity: 0, y: 16, scale: 0.98 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-      className="w-full max-w-[560px] mx-auto"
+      className="w-full max-w-[600px] mx-auto"
     >
       <AuthCard>
-        {/* Success overlay */}
-        <AuthSuccessOverlay
-          show={authSuccess}
-          message="Welcome aboard!"
-          subtext="Getting your coach ready\u2026"
-        />
-
         {/* Back button — only on steps 2 and 3 */}
         {currentStep > 1 && <BackButton onClick={goBack} />}
 
@@ -412,6 +404,7 @@ export function SignUpForm({ onSwitchToSignIn, onForgotPassword, onSuccess, onRe
 
                 <AuthButton
                   loading={loading}
+                  success={success}
                   onClick={handleStep3Submit}
                   type="button"
                   loadingMessages={signUpLoadingMessages}

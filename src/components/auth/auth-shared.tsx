@@ -24,7 +24,7 @@ export function AuthCard({
   className?: string;
 }) {
   return (
-    <div className={cn('w-full max-w-[560px] mx-auto', className)}>
+    <div className={cn('w-full max-w-[600px] mx-auto', className)}>
       <motion.div
         initial="initial"
         animate="animate"
@@ -64,7 +64,7 @@ export function AuthCard({
           {/* Hover border glow */}
           <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 ring-1 ring-inset ring-emerald-500/10" aria-hidden="true" />
 
-          <div className="relative p-8 sm:p-10">{children}</div>
+          <div className="relative p-10 sm:p-12">{children}</div>
         </div>
       </motion.div>
     </div>

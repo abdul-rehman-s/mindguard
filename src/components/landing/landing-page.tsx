@@ -850,7 +850,7 @@ export function LandingPage() {
               </AnimatedSection>
 
               {/* ── Right: Auth Form ── */}
-              <AnimatedSection className="w-full max-w-[560px] lg:w-[560px]">
+              <AnimatedSection className="w-full max-w-[600px] lg:w-[600px]">
                 <AuthExperience onSuccess={handleAuthSuccess} />
               </AnimatedSection>
             </div>

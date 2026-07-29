@@ -154,7 +154,7 @@ export function AuthField({
           className={cn(
             'w-full rounded-xl border bg-zinc-800/30 text-zinc-200 transition-all duration-300 ease-out',
             // Size — h-14 with more padding for comfortable input
-            isFloating ? 'pt-7 pb-2 h-[60px] text-base' : 'h-[60px] text-base',
+            isFloating ? 'pt-7 pb-2 h-[64px] text-base' : 'h-[64px] text-base',
             'pl-4 pr-14',
             // Placeholder styling — conversational placeholder is more subtle
             'placeholder:text-zinc-600 placeholder:transition-colors placeholder:duration-300',

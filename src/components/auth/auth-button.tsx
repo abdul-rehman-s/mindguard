@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Loader2, ArrowRight } from 'lucide-react';
+import { Loader2, ArrowRight, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils';
 
 interface AuthButtonProps {
   loading?: boolean;
+  success?: boolean;
   children: React.ReactNode;
   onClick?: () => void;
   type?: 'submit' | 'button';
@@ -23,6 +24,7 @@ interface AuthButtonProps {
 
 export function AuthButton({
   loading = false,
+  success = false,
   children,
   onClick,
   type = 'submit',
@@ -55,8 +57,8 @@ export function AuthButton({
 
   const effectiveIndex = loading ? messageIndex : 0;
 
-  // Height map: primary gets h-13, secondary gets h-12, ghost gets h-10
-  const heightClass = variant === 'primary' ? 'h-[56px]' : variant === 'secondary' ? 'h-[52px]' : 'h-11';
+  // Height map: primary gets h-[60px], secondary gets h-[52px], ghost gets h-11
+  const heightClass = variant === 'primary' ? 'h-[60px]' : variant === 'secondary' ? 'h-[52px]' : 'h-11';
 
   // Style map per variant
   const variantStyles: Record<string, string> = {
@@ -68,6 +70,11 @@ export function AuthButton({
       'bg-transparent text-zinc-400 border-none shadow-none hover:bg-zinc-800/40 hover:text-zinc-300 active:bg-zinc-800/60',
   };
 
+  // Success style override
+  const successStyle = success && variant === 'primary'
+    ? 'bg-gradient-to-b from-emerald-400 to-emerald-500 shadow-xl shadow-emerald-500/30'
+    : '';
+
   return (
     <div className="space-y-2">
       <Button
@@ -78,11 +85,22 @@ export function AuthButton({
           'w-full rounded-xl text-[15px] font-semibold transition-all duration-300 ease-out cursor-pointer',
           heightClass,
           variantStyles[variant] ?? variantStyles.primary,
+          successStyle,
           loading && 'opacity-80',
           className,
         )}
       >
-        {loading ? (
+        {success ? (
+          <motion.span
+            className="flex items-center justify-center gap-2"
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+          >
+            <Check className="h-5 w-5" />
+            <span>You\u2019re in!</span>
+          </motion.span>
+        ) : loading ? (
           <span className="flex items-center justify-center gap-2.5">
             <Loader2 className="h-4 w-4 animate-spin" />
             <AnimatePresence mode="wait" initial={false}>
@@ -131,7 +149,7 @@ export function StepButton({
       onClick={onClick}
       disabled={disabled || loading}
       className={cn(
-        'group relative w-full h-[56px] rounded-xl text-base font-semibold',
+        'group relative w-full h-[60px] rounded-xl text-base font-semibold',
         'transition-all duration-300 ease-out cursor-pointer',
         'bg-gradient-to-b from-emerald-500 to-emerald-600 text-white',
         'shadow-lg shadow-emerald-500/20',

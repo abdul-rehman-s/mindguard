@@ -9,7 +9,6 @@ import {
   AuthCard,
   AuthHeader,
   AuthDivider,
-  AuthSuccessOverlay,
   StepIndicator,
   BackButton,
   TrustBadge,
@@ -112,7 +111,7 @@ export function SignInForm({ onSwitchToSignUp, onForgotPassword, onSuccess }: Si
   const [passwordError, setPasswordError] = useState('');
   const [authError, setAuthError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [authSuccess, setAuthSuccess] = useState(false);
+  const [success, setSuccess] = useState(false);
 
   // Direction tracking for animations
   const [direction, setDirection] = useState<'forward' | 'back'>('forward');
@@ -176,15 +175,15 @@ export function SignInForm({ onSwitchToSignUp, onForgotPassword, onSuccess }: Si
         throw new Error('Invalid credentials');
       }
 
-      // Success — show celebration overlay
-      setAuthSuccess(true);
-      setTimeout(async () => {
-        // Force session refresh so page.tsx detects the new authenticated state
-        await getSession();
-        onSuccess();
-      }, 1200);
+      // Brief success state on button, then transition
+      setSuccess(true);
+      // Force session refresh so page.tsx detects the new authenticated state
+      await getSession();
+      // Small delay so the user sees the success state before page transition
+      await new Promise((r) => setTimeout(r, 400));
+      onSuccess();
     } catch (err: unknown) {
-      setAuthSuccess(false);
+      setSuccess(false);
       if (err instanceof Error) {
         setAuthError(humanizeError(err.message));
       } else {
@@ -208,16 +207,9 @@ export function SignInForm({ onSwitchToSignUp, onForgotPassword, onSuccess }: Si
       variants={cardEntrance}
       initial="hidden"
       animate="visible"
-      className="w-full max-w-[560px]"
+      className="w-full max-w-[600px]"
     >
       <AuthCard>
-        {/* Success overlay */}
-        <AuthSuccessOverlay
-          show={authSuccess}
-          message="Welcome back!"
-          subtext="Picking up where you left off\u2026"
-        />
-
         {/* Back button — Step 2 only */}
         <AnimatePresence>
           {step === 2 && (
@@ -350,6 +342,7 @@ export function SignInForm({ onSwitchToSignUp, onForgotPassword, onSuccess }: Si
                 {/* Sign in button */}
                 <AuthButton
                   loading={loading}
+                  success={success}
                   onClick={handleSignIn}
                   type="button"
                   loadingMessages={signInLoadingMessages}
