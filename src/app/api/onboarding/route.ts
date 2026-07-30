@@ -29,7 +29,7 @@ const schema = z.object({
   focusGoalMinutes: z.number().int().min(30).max(300).optional(),
   // UX Rebirth raw answer fields — user's natural answers
   scheduleType: z.enum(['morning_person', 'night_owl', 'flexible_schedule', 'changes_frequently']).optional(),
-  sleepRange: z.enum(['before_midnight', '12_2am', '2_4am', 'after_4am', 'varies']).optional(),
+  sleepRange: z.preprocess((v) => (v === '' ? undefined : v), z.enum(['before_midnight', '12_2am', '2_4am', 'after_4am', 'varies']).optional()),
   focusDurationComfort: z.enum(['15min', '30min', '45min', 'about_an_hour', '90_plus', 'it_depends']).optional(),
   workStylePreference: z.enum(['short_sprints', 'deep_uninterrupted', 'mix_both']).optional(),
   otherImproveText: z.string().optional(),

@@ -165,7 +165,10 @@ export default function HomePage() {
   const currentUserId = (session?.user as Record<string, unknown> | undefined)?.id as string | undefined;
   const sessionOnboarded = (session?.user as Record<string, unknown> | undefined)?.onboarded;
   const isForceOnboardedForCurrentUser = forceOnboarded && completedForUserId === currentUserId;
-  const needsOnboarding = !isForceOnboardedForCurrentUser && status === 'authenticated' && (sessionOnboarded === false || (sessionOnboarded === undefined && onboardingResult?.onboarded === false));
+  // When sessionOnboarded is undefined during auth transition, default to needsOnboarding=true.
+  // The onboarding API check will confirm and redirect to dashboard if user is already onboarded.
+  // This prevents a flash of empty dashboard for un-onboarded users. See .cluster/debug-auth-flow.mjs
+  const needsOnboarding = !isForceOnboardedForCurrentUser && status === 'authenticated' && sessionOnboarded !== true && onboardingResult?.onboarded !== true;
 
   useEffect(() => {
     if (status === 'authenticated' && session?.user) {

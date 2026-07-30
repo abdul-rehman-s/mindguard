@@ -484,6 +484,27 @@ export interface UserSettingsData {
   coachPersonality: string;
 }
 
+// ─── Knowledge Graph types ───
+
+export interface KnowledgeGraphNode {
+  id: string;
+  type: string;
+  label: string;
+  data: Record<string, unknown>;
+}
+
+export interface KnowledgeGraphEdge {
+  source: string;
+  target: string;
+  relation: string;
+  weight: number;
+}
+
+export interface KnowledgeGraph {
+  nodes: KnowledgeGraphNode[];
+  edges: KnowledgeGraphEdge[];
+}
+
 // ─── Device Pairing types ───
 
 export interface DeviceInfo {
